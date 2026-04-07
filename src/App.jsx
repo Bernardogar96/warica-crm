@@ -49,7 +49,6 @@ const TABS = [
   { id: "kanban", label: "Kanban", icon: "▦" },
   { id: "list", label: "Listado", icon: "☰" },
   { id: "analytics", label: "Análisis", icon: "◴" },
-  { id: "profile", label: "Perfil", icon: "◯" },
 ];
 
 /* ── helpers ── */
@@ -252,7 +251,7 @@ function CRMApp({ user, onLogout }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button onClick={() => setModal({ type: "new" })} style={btnPrimary}>+ Oportunidad</button>
-          <div style={{ color: C.textDim, fontSize: 12 }}>{user.name}</div>
+          <div onClick={() => setTab("profile")} style={{ color: tab === "profile" ? C.accent : C.textDim, fontSize: 12, cursor: "pointer", padding: "4px 8px", borderRadius: 6, background: tab === "profile" ? C.accentDim : "transparent" }}>{user.name}</div>
           <button onClick={onLogout} style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Salir</button>
         </div>
       </header>
