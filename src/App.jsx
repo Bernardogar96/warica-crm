@@ -49,6 +49,7 @@ const TABS = [
   { id: "kanban", label: "Kanban", icon: "▦" },
   { id: "list", label: "Listado", icon: "☰" },
   { id: "analytics", label: "Análisis", icon: "◴" },
+  { id: "profile", label: "Perfil", icon: "◯" },
 ];
 
 /* ── helpers ── */
@@ -262,6 +263,7 @@ function CRMApp({ user, onLogout }) {
         {tab === "kanban" && <KanbanView opps={filtered} moveStage={moveStage} onEdit={(o) => setModal({ type: "edit", opp: o })} setModal={setModal} />}
         {tab === "list" && <ListView opps={filtered} onEdit={(o) => setModal({ type: "edit", opp: o })} onDelete={deleteOpp} moveStage={moveStage} setModal={setModal} />}
         {tab === "analytics" && <AnalyticsView opps={filtered} />}
+        {tab === "profile" && <ProfileView user={user} />}
         {tab === "admin" && isAdmin && <AdminView currentUserId={user.userId} />}
       </main>
 
@@ -714,6 +716,71 @@ function Field({ label, children }) {
   return <div style={{ marginBottom: 8 }}><label style={{ fontSize: 11, color: C.textDim, display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>{label}</label>{children}</div>;
 }
 
+/* =================== PROFILE VIEW =================== */
+function ProfileView({ user }) {
+  const [name, setName] = useState(user.name || "");
+  const [currentPass, setCurrentPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
+  const [nameMsg, setNameMsg] = useState(null);
+  const [passMsg, setPassMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const saveName = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    await supabase.from("profiles").update({ name: name.trim() }).eq("id", user.userId);
+    await supabase.auth.updateUser({ data: { name: name.trim() } });
+    setNameMsg({ ok: true, text: "Nombre actualizado" });
+    setSaving(false);
+    setTimeout(() => setNameMsg(null), 3000);
+  };
+
+  const savePassword = async () => {
+    if (newPass.length < 6) { setPassMsg({ ok: false, text: "Mínimo 6 caracteres" }); return; }
+    if (newPass !== confirmPass) { setPassMsg({ ok: false, text: "Las contraseñas no coinciden" }); return; }
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) setPassMsg({ ok: false, text: error.message });
+    else { setPassMsg({ ok: true, text: "Contraseña actualizada" }); setCurrentPass(""); setNewPass(""); setConfirmPass(""); }
+    setSaving(false);
+    setTimeout(() => setPassMsg(null), 3000);
+  };
+
+  const card = { background: C.card, borderRadius: 12, padding: 24, marginBottom: 16 };
+
+  return (
+    <div style={{ maxWidth: 480 }}>
+      <h2 style={h2Style}>Mi Perfil</h2>
+
+      <div style={card}>
+        <div style={{ fontSize: 12, color: C.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Información personal</div>
+        <Field label="Correo electrónico">
+          <input value={user.email} readOnly style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }} />
+        </Field>
+        <Field label="Nombre">
+          <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Tu nombre" />
+        </Field>
+        {nameMsg && <div style={{ fontSize: 13, color: nameMsg.ok ? C.success : C.danger, marginBottom: 8 }}>{nameMsg.text}</div>}
+        <button onClick={saveName} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>Guardar nombre</button>
+      </div>
+
+      <div style={card}>
+        <div style={{ fontSize: 12, color: C.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Cambiar contraseña</div>
+        <Field label="Nueva contraseña">
+          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} style={inputStyle} placeholder="Mínimo 6 caracteres" />
+        </Field>
+        <Field label="Confirmar contraseña">
+          <input type="password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} style={inputStyle} placeholder="Repite la contraseña"
+            onKeyDown={(e) => e.key === "Enter" && savePassword()} />
+        </Field>
+        {passMsg && <div style={{ fontSize: 13, color: passMsg.ok ? C.success : C.danger, marginBottom: 8 }}>{passMsg.text}</div>}
+        <button onClick={savePassword} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>Actualizar contraseña</button>
+      </div>
+    </div>
+  );
+}
+
 /* ── styles ── */
 const inputStyle = { width: "100%", background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" };
 const inputSmall = { ...inputStyle, padding: "5px 10px", fontSize: 12 };
@@ -792,6 +859,14 @@ function AdminView({ currentUserId }) {
     );
   };
 
+  const [resetMsg, setResetMsg] = useState({});
+  const sendReset = async (u) => {
+    if (!u.email) { setResetMsg({ [u.id]: { ok: false, text: "Sin email" } }); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(u.email, { redirectTo: window.location.origin });
+    setResetMsg({ [u.id]: error ? { ok: false, text: "Error" } : { ok: true, text: "Enviado" } });
+    setTimeout(() => setResetMsg({}), 3000);
+  };
+
   const sectionBtn = (id, label) => (
     <button onClick={() => setSection(id)} style={{ background: section === id ? C.accentDim : "transparent", color: section === id ? C.accent : C.textDim, border: "none", borderRadius: 8, padding: "6px 16px", cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "inherit" }}>{label}</button>
   );
@@ -801,6 +876,7 @@ function AdminView({ currentUserId }) {
       <h2 style={h2Style}>Administración</h2>
       <div style={{ display: "flex", gap: 4, marginBottom: 20, background: C.surface, borderRadius: 10, padding: 4, width: "fit-content", border: `1px solid ${C.border}` }}>
         {sectionBtn("users", "👥 Usuarios")}
+        {sectionBtn("passwords", "🔑 Contraseñas")}
         {sectionBtn("config", "⚙ Configuración")}
       </div>
 
@@ -854,6 +930,38 @@ function AdminView({ currentUserId }) {
         </div>
       )}
 
+      {section === "passwords" && (
+        <div style={{ background: C.card, borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", background: C.surface, borderBottom: `1px solid ${C.border}`, fontSize: 12, color: C.textDim }}>
+            Envía un correo de restablecimiento de contraseña a cualquier usuario. El usuario recibirá un link para crear una nueva contraseña.
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: C.surface, textAlign: "left" }}>
+                {["Nombre", "Correo", "Rol", "Acción"].map((h) => (
+                  <th key={h} style={{ padding: "10px 16px", color: C.textDim, fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <td style={tdStyle}>{u.name || "—"} {u.id === currentUserId && <span style={{ fontSize: 10, color: C.accent }}>(tú)</span>}</td>
+                  <td style={{ ...tdStyle, color: C.textDim }}>{u.email || "—"}</td>
+                  <td style={tdStyle}><span style={{ background: u.role === "admin" ? C.accentDim : C.border + "40", color: u.role === "admin" ? C.accent : C.textDim, borderRadius: 6, padding: "2px 8px", fontSize: 11 }}>{u.role}</span></td>
+                  <td style={tdStyle}>
+                    <button onClick={() => sendReset(u)} style={{ ...btnPrimary, padding: "5px 12px", fontSize: 12 }}>
+                      Enviar reset
+                    </button>
+                    {resetMsg[u.id] && <span style={{ marginLeft: 8, fontSize: 12, color: resetMsg[u.id].ok ? C.success : C.danger }}>{resetMsg[u.id].text}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {section === "config" && (
         <div style={{ background: C.card, borderRadius: 12, padding: 24 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 32 }}>
@@ -872,14 +980,63 @@ function AdminView({ currentUserId }) {
   );
 }
 
+/* =================== PASSWORD RECOVERY =================== */
+function PasswordRecoveryScreen() {
+  const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [done, setDone] = useState(false);
+
+  const save = async () => {
+    if (newPass.length < 6) { setMsg({ ok: false, text: "Mínimo 6 caracteres" }); return; }
+    if (newPass !== confirmPass) { setMsg({ ok: false, text: "Las contraseñas no coinciden" }); return; }
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) setMsg({ ok: false, text: error.message });
+    else { setMsg({ ok: true, text: "Contraseña actualizada correctamente" }); setDone(true); }
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 400, background: C.surface, borderRadius: 16, padding: 40, border: `1px solid ${C.border}` }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <img src={LOGO} alt="Warica" style={{ height: 48, width: "auto" }} />
+          <div style={{ color: C.text, fontWeight: 600, fontSize: 18, marginTop: 16 }}>Nueva contraseña</div>
+        </div>
+        {done ? (
+          <>
+            <div style={{ color: C.success, fontSize: 14, textAlign: "center", marginBottom: 20 }}>✓ {msg.text}</div>
+            <button onClick={() => supabase.auth.signOut()} style={{ ...btnPrimary, width: "100%" }}>Ir al login</button>
+          </>
+        ) : (
+          <>
+            <Field label="Nueva contraseña">
+              <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} style={{ ...inputStyle, marginBottom: 8 }} placeholder="Mínimo 6 caracteres" />
+            </Field>
+            <Field label="Confirmar contraseña">
+              <input type="password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} style={{ ...inputStyle, marginBottom: 8 }} placeholder="Repite la contraseña"
+                onKeyDown={(e) => e.key === "Enter" && save()} />
+            </Field>
+            {msg && <div style={{ color: msg.ok ? C.success : C.danger, fontSize: 13, marginBottom: 12 }}>{msg.text}</div>}
+            <button onClick={save} style={{ ...btnPrimary, width: "100%" }}>Guardar contraseña</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* =================== ROOT =================== */
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [profile, setProfile] = useState(null);
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecovering(true);
+      else { setRecovering(false); setSession(session); }
+    });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -889,6 +1046,7 @@ export default function App() {
       .then(({ data }) => setProfile(data));
   }, [session]);
 
+  if (recovering) return <PasswordRecoveryScreen />;
   if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh" }} />;
   if (!session) return <LoginScreen />;
   if (session && !profile) return <div style={{ background: C.bg, minHeight: "100vh" }} />;
