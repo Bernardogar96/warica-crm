@@ -524,9 +524,22 @@ function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
   const set = (k, v) => setForm({ ...form, [k]: v });
   const isEdit = !!opp;
 
-  const setHistoryDate = (i, date) => {
+  // Stages to show in history: from "Primer Contacto" up to current stage (in pipeline order)
+  const pipelineOrder = [...STAGES, WON_STAGE, LOST_STAGE];
+  const currentIdx = pipelineOrder.indexOf(form.stage);
+  const stagesInHistory = currentIdx >= 0 ? pipelineOrder.slice(0, currentIdx + 1) : [form.stage];
+
+  const getHistoryDate = (stage) => {
+    if (stage === "Primer Contacto") return form.createdAt || "";
+    return (form.history || []).find((e) => e.stage === stage)?.date || "";
+  };
+
+  const setHistoryDate = (stage, date) => {
+    if (stage === "Primer Contacto") { set("createdAt", date); return; }
     const h = [...(form.history || [])];
-    h[i] = { ...h[i], date };
+    const idx = h.findIndex((e) => e.stage === stage);
+    if (idx >= 0) h[idx] = { ...h[idx], date };
+    else h.push({ stage, date });
     set("history", h);
   };
 
@@ -558,21 +571,22 @@ function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
           )}
         </div>
         <Field label="Notas"><textarea value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} style={{ ...inputStyle, height: 60, resize: "vertical" }} /></Field>
-        {(form.history || []).length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: C.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Historial de etapas</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {(form.history || []).map((entry, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: C.card, borderRadius: 8, padding: "6px 10px" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 4, background: stageColor[entry.stage] || C.textDim, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, flex: 1, color: C.text }}>{entry.stage}</span>
-                  <input type="date" value={entry.date || ""} max={today()} onChange={(e) => setHistoryDate(i, e.target.value)}
-                    style={{ ...inputSmall, width: 140, padding: "3px 8px" }} />
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 11, color: C.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Historial de etapas</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {stagesInHistory.map((stage) => {
+              const date = getHistoryDate(stage);
+              return (
+                <div key={stage} style={{ display: "flex", alignItems: "center", gap: 10, background: C.card, borderRadius: 8, padding: "6px 10px" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: stageColor[stage] || C.textDim, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, flex: 1, color: C.text }}>{stage}</span>
+                  <input type="date" value={date} max={today()} onChange={(e) => setHistoryDate(stage, e.target.value)}
+                    style={{ ...inputSmall, width: 140, padding: "3px 8px", color: date ? C.text : C.textDim }} />
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
           <div>{isEdit && onDelete && <button onClick={onDelete} style={{ ...btnSmall, color: C.danger }}>Eliminar</button>}</div>
           <div style={{ display: "flex", gap: 8 }}>
