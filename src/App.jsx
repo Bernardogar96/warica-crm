@@ -102,7 +102,7 @@ function LoginScreen({ onLogin }) {
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 400, background: C.surface, borderRadius: 16, padding: 40, border: `1px solid ${C.border}` }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <img src={LOGO} alt="Warica" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover" }} />
+          <img src={LOGO} alt="Warica" style={{ height: 56, width: "auto" }} />
           <div style={{ color: C.textDim, marginTop: 8, fontSize: 14 }}>Sistema de gestión de oportunidades</div>
         </div>
         {mode === "register" && (
@@ -172,7 +172,7 @@ function CRMApp({ user, onLogout }) {
       {/* Header */}
       <header style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <img src={LOGO} alt="Warica" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
+          <img src={LOGO} alt="Warica" style={{ height: 28, width: "auto" }} />
           <nav style={{ display: "flex", gap: 4, marginLeft: 8 }}>
             {TABS.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)}
