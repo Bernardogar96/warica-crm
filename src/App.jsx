@@ -67,6 +67,7 @@ function LoginScreen() {
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async () => {
     setErr("");
@@ -78,12 +79,32 @@ function LoginScreen() {
         options: { data: { name: name || email.split("@")[0] } },
       });
       if (error) setErr(error.message);
+      else setEmailSent(true);
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) setErr("Credenciales incorrectas");
     }
     setLoading(false);
   };
+
+  if (emailSent) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 400, background: C.surface, borderRadius: 16, padding: 40, border: `1px solid ${C.border}`, textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+          <h2 style={{ color: C.text, fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Revisa tu correo</h2>
+          <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+            Te enviamos un enlace de confirmación a <strong style={{ color: C.accent }}>{email}</strong>.<br />
+            Haz click en el enlace para activar tu cuenta y luego inicia sesión.
+          </p>
+          <button onClick={() => { setEmailSent(false); setMode("login"); }}
+            style={{ ...btnPrimary, width: "100%" }}>
+            Ya confirmé, iniciar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
