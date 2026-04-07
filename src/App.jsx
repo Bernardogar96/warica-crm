@@ -137,7 +137,8 @@ function CRMApp({ user, onLogout }) {
   const persist = useCallback((next) => { setOpps(next); saveJSON(OPPS_KEY, next); }, []);
 
   const addOpp = (data) => {
-    const o = { ...data, id: uid(), createdAt: today(), createdBy: user.userId, stage: "Primer Contacto", lostReason: "", history: [{ stage: "Primer Contacto", date: today() }] };
+    const oppDate = data.createdAt || today();
+    const o = { ...data, id: uid(), createdAt: oppDate, createdBy: user.userId, stage: "Primer Contacto", lostReason: "", history: [{ stage: "Primer Contacto", date: oppDate }] };
     persist([...opps, o]);
     setModal(null);
   };
@@ -218,10 +219,19 @@ function Dashboard({ opps }) {
   const wonThisMonth = won.filter((o) => (o.history || []).some((e) => e.stage === WON_STAGE && e.date?.startsWith(thisMonth)));
   const wonThisMonthAmt = wonThisMonth.reduce((s, o) => s + (Number(o.amount) || 0), 0);
 
+  const now = new Date();
+  const avgAgeDays = active.length === 0 ? 0 : Math.round(
+    active.reduce((sum, o) => {
+      const d = o.createdAt ? new Date(o.createdAt) : now;
+      return sum + (now - d) / 86400000;
+    }, 0) / active.length
+  );
+  const ageLabel = avgAgeDays === 0 ? "Sin datos" : avgAgeDays === 1 ? "1 día" : `${avgAgeDays} días`;
+
   const cards = [
     { label: "Pipeline Activo", value: fmt(totalActive), sub: `${active.length} oportunidades`, color: C.accent },
     { label: "% de Bateo", value: `${hitRate}%`, sub: `${won.length} ganadas / ${closed.length} cerradas`, color: hitRate >= 50 ? C.success : hitRate >= 25 ? C.warn : C.danger },
-    { label: "Ganadas (total)", value: fmt(totalWon), sub: `${won.length} oportunidades`, color: C.success },
+    { label: "Antigüedad Promedio", value: ageLabel, sub: "días en pipeline activo", color: avgAgeDays > 60 ? C.danger : avgAgeDays > 30 ? C.warn : C.success },
     { label: "Cerradas este mes", value: fmt(wonThisMonthAmt), sub: `${wonThisMonth.length} oportunidades`, color: C.accent },
   ];
 
@@ -510,18 +520,27 @@ function GlobalFilterBar({ filters, setFilters, opps }) {
 
 /* =================== MODALS =================== */
 function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
-  const [form, setForm] = useState(opp || { company: "", contact: "", salesperson: defaultSalesperson || "", orgType: ORG_TYPES[0], companySize: COMPANY_SIZES[0], serviceType: SERVICE_TYPES[0], amount: "", notes: "", stage: "Primer Contacto" });
+  const [form, setForm] = useState(opp || { company: "", contact: "", salesperson: defaultSalesperson || "", orgType: ORG_TYPES[0], companySize: COMPANY_SIZES[0], serviceType: SERVICE_TYPES[0], amount: "", notes: "", stage: "Primer Contacto", createdAt: today() });
   const set = (k, v) => setForm({ ...form, [k]: v });
   const isEdit = !!opp;
 
+  const setHistoryDate = (i, date) => {
+    const h = [...(form.history || [])];
+    h[i] = { ...h[i], date };
+    set("history", h);
+  };
+
   return (
     <Overlay onClose={onClose}>
-      <div style={{ width: 500, maxHeight: "80vh", overflowY: "auto" }}>
+      <div style={{ width: 520, maxHeight: "85vh", overflowY: "auto" }}>
         <h3 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 600 }}>{isEdit ? "Editar Oportunidad" : "Nueva Oportunidad"}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Empresa"><input value={form.company} onChange={(e) => set("company", e.target.value)} style={inputStyle} placeholder="Nombre de empresa" /></Field>
           <Field label="Contacto"><input value={form.contact} onChange={(e) => set("contact", e.target.value)} style={inputStyle} placeholder="Nombre del contacto" /></Field>
           <Field label="Vendedor"><input value={form.salesperson || ""} onChange={(e) => set("salesperson", e.target.value)} style={inputStyle} placeholder="Nombre del vendedor" /></Field>
+          <Field label="Fecha de creación">
+            <input type="date" value={form.createdAt || today()} max={today()} onChange={(e) => set("createdAt", e.target.value)} style={inputStyle} />
+          </Field>
           <Field label="Tipo de Org.">
             <select value={form.orgType} onChange={(e) => set("orgType", e.target.value)} style={inputStyle}>{ORG_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
           </Field>
@@ -539,6 +558,21 @@ function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
           )}
         </div>
         <Field label="Notas"><textarea value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} style={{ ...inputStyle, height: 60, resize: "vertical" }} /></Field>
+        {(form.history || []).length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: C.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Historial de etapas</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(form.history || []).map((entry, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: C.card, borderRadius: 8, padding: "6px 10px" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: stageColor[entry.stage] || C.textDim, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, flex: 1, color: C.text }}>{entry.stage}</span>
+                  <input type="date" value={entry.date || ""} max={today()} onChange={(e) => setHistoryDate(i, e.target.value)}
+                    style={{ ...inputSmall, width: 140, padding: "3px 8px" }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
           <div>{isEdit && onDelete && <button onClick={onDelete} style={{ ...btnSmall, color: C.danger }}>Eliminar</button>}</div>
           <div style={{ display: "flex", gap: 8 }}>
