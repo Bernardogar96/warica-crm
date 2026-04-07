@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "./supabase";
 
 const LOGO = "/logo.jpeg";
 
@@ -43,18 +44,6 @@ const pct = (a, b) => (b === 0 ? 0 : Math.round((a / b) * 100));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const today = () => new Date().toISOString().slice(0, 10);
 
-/* ── localStorage wrappers ── */
-function loadJSON(key, fallback = []) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-  catch { return fallback; }
-}
-function saveJSON(key, data) {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
-}
-
-const OPPS_KEY = "warica_crm_opps";
-const USERS_KEY = "warica_crm_users";
-const SESSION_KEY = "warica_crm_session";
 
 /* ── Colors ── */
 const C = {
@@ -71,31 +60,29 @@ const stageColor = {
 };
 
 /* =================== LOGIN =================== */
-function LoginScreen({ onLogin }) {
+function LoginScreen() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setErr("");
     if (!email.includes("@") || pass.length < 4) { setErr("Correo inválido o contraseña muy corta"); return; }
-    const users = loadJSON(USERS_KEY, []);
+    setLoading(true);
     if (mode === "register") {
-      if (users.find((u) => u.email === email)) { setErr("Este correo ya está registrado"); return; }
-      const user = { id: uid(), email, pass, name: name || email.split("@")[0], created: today() };
-      saveJSON(USERS_KEY, [...users, user]);
-      const session = { userId: user.id, email: user.email, name: user.name };
-      saveJSON(SESSION_KEY, session);
-      onLogin(session);
+      const { error } = await supabase.auth.signUp({
+        email, password: pass,
+        options: { data: { name: name || email.split("@")[0] } },
+      });
+      if (error) setErr(error.message);
     } else {
-      const user = users.find((u) => u.email === email && u.pass === pass);
-      if (!user) { setErr("Credenciales incorrectas"); return; }
-      const session = { userId: user.id, email: user.email, name: user.name };
-      saveJSON(SESSION_KEY, session);
-      onLogin(session);
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) setErr("Credenciales incorrectas");
     }
+    setLoading(false);
   };
 
   return (
@@ -106,14 +93,14 @@ function LoginScreen({ onLogin }) {
           <div style={{ color: C.textDim, marginTop: 8, fontSize: 14 }}>Sistema de gestión de oportunidades</div>
         </div>
         {mode === "register" && (
-          <input placeholder="Nombre completo" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+          <input placeholder="Nombre completo" value={name} onChange={(e) => setName(e.target.value)} style={{ ...inputStyle, marginBottom: 8 }} />
         )}
-        <input placeholder="correo@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} type="email" />
-        <input placeholder="Contraseña" value={pass} onChange={(e) => setPass(e.target.value)} style={inputStyle} type="password"
+        <input placeholder="correo@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...inputStyle, marginBottom: 8 }} type="email" />
+        <input placeholder="Contraseña" value={pass} onChange={(e) => setPass(e.target.value)} style={{ ...inputStyle, marginBottom: 8 }} type="password"
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
         {err && <div style={{ color: C.danger, fontSize: 13, marginBottom: 12 }}>{err}</div>}
-        <button onClick={handleSubmit} style={{ ...btnPrimary, width: "100%", marginTop: 8 }}>
-          {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
+        <button onClick={handleSubmit} disabled={loading} style={{ ...btnPrimary, width: "100%", marginTop: 4, opacity: loading ? 0.7 : 1 }}>
+          {loading ? "..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
         </button>
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <span style={{ color: C.textDim, fontSize: 13 }}>
@@ -129,24 +116,46 @@ function LoginScreen({ onLogin }) {
 
 /* =================== MAIN APP =================== */
 function CRMApp({ user, onLogout }) {
-  const [opps, setOpps] = useState(() => loadJSON(OPPS_KEY, []));
+  const [opps, setOpps] = useState([]);
   const [tab, setTab] = useState("dashboard");
   const [modal, setModal] = useState(null);
   const [filters, setFilters] = useState({ search: "", stage: "", service: "", orgType: "", companySize: "", salesperson: "" });
 
-  const persist = useCallback((next) => { setOpps(next); saveJSON(OPPS_KEY, next); }, []);
+  useEffect(() => {
+    supabase.from("opportunities").select("data").then(({ data }) => {
+      if (data) setOpps(data.map((r) => r.data));
+    });
+    const channel = supabase.channel("opps-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "opportunities" }, () => {
+        supabase.from("opportunities").select("data").then(({ data }) => {
+          if (data) setOpps(data.map((r) => r.data));
+        });
+      }).subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
-  const addOpp = (data) => {
+  const addOpp = async (data) => {
     const oppDate = data.createdAt || today();
     const o = { ...data, id: uid(), createdAt: oppDate, createdBy: user.userId, stage: "Primer Contacto", lostReason: "", history: [{ stage: "Primer Contacto", date: oppDate }] };
-    persist([...opps, o]);
+    await supabase.from("opportunities").insert({ id: o.id, data: o });
+    setOpps((prev) => [...prev, o]);
     setModal(null);
   };
-  const updateOpp = (data) => { persist(opps.map((o) => (o.id === data.id ? { ...o, ...data } : o))); setModal(null); };
-  const moveStage = (id, newStage, lostReason) => {
-    persist(opps.map((o) => o.id === id ? { ...o, stage: newStage, lostReason: lostReason || o.lostReason, history: [...(o.history || []), { stage: newStage, date: today() }] } : o));
+  const updateOpp = async (data) => {
+    await supabase.from("opportunities").update({ data }).eq("id", data.id);
+    setOpps((prev) => prev.map((o) => o.id === data.id ? { ...o, ...data } : o));
+    setModal(null);
   };
-  const deleteOpp = (id) => persist(opps.filter((o) => o.id !== id));
+  const moveStage = async (id, newStage, lostReason) => {
+    const opp = opps.find((o) => o.id === id);
+    const updated = { ...opp, stage: newStage, lostReason: lostReason || opp.lostReason, history: [...(opp.history || []), { stage: newStage, date: today() }] };
+    await supabase.from("opportunities").update({ data: updated }).eq("id", id);
+    setOpps((prev) => prev.map((o) => o.id === id ? updated : o));
+  };
+  const deleteOpp = async (id) => {
+    await supabase.from("opportunities").delete().eq("id", id);
+    setOpps((prev) => prev.filter((o) => o.id !== id));
+  };
 
   const filtered = useMemo(() => {
     return opps.filter((o) => {
@@ -648,13 +657,22 @@ const h2Style = { margin: "0 0 16px", fontSize: 20, fontWeight: 600 };
 
 /* =================== ROOT =================== */
 export default function App() {
-  const [user, setUser] = useState(() => loadJSON(SESSION_KEY, null));
+  const [session, setSession] = useState(undefined);
 
-  const handleLogout = () => {
-    localStorage.removeItem(SESSION_KEY);
-    setUser(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh" }} />;
+  if (!session) return <LoginScreen />;
+
+  const user = {
+    userId: session.user.id,
+    email: session.user.email,
+    name: session.user.user_metadata?.name || session.user.email.split("@")[0],
   };
 
-  if (!user) return <LoginScreen onLogin={(u) => setUser(u)} />;
-  return <CRMApp user={user} onLogout={handleLogout} />;
+  return <CRMApp user={user} onLogout={() => supabase.auth.signOut()} />;
 }
