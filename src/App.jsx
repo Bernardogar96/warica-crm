@@ -132,7 +132,7 @@ function CRMApp({ user, onLogout }) {
   const [opps, setOpps] = useState(() => loadJSON(OPPS_KEY, []));
   const [tab, setTab] = useState("dashboard");
   const [modal, setModal] = useState(null);
-  const [filters, setFilters] = useState({ stage: "", service: "", search: "" });
+  const [filters, setFilters] = useState({ search: "", stage: "", service: "", orgType: "", companySize: "", salesperson: "" });
 
   const persist = useCallback((next) => { setOpps(next); saveJSON(OPPS_KEY, next); }, []);
 
@@ -151,9 +151,17 @@ function CRMApp({ user, onLogout }) {
     return opps.filter((o) => {
       if (filters.stage && o.stage !== filters.stage) return false;
       if (filters.service && o.serviceType !== filters.service) return false;
+      if (filters.orgType && o.orgType !== filters.orgType) return false;
+      if (filters.companySize && o.companySize !== filters.companySize) return false;
+      if (filters.salesperson && o.salesperson !== filters.salesperson) return false;
       if (filters.search) {
         const s = filters.search.toLowerCase();
-        return o.company?.toLowerCase().includes(s) || o.contact?.toLowerCase().includes(s) || o.serviceType?.toLowerCase().includes(s);
+        return (
+          o.company?.toLowerCase().includes(s) ||
+          o.contact?.toLowerCase().includes(s) ||
+          o.serviceType?.toLowerCase().includes(s) ||
+          o.salesperson?.toLowerCase().includes(s)
+        );
       }
       return true;
     });
@@ -180,16 +188,17 @@ function CRMApp({ user, onLogout }) {
           <button onClick={onLogout} style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Salir</button>
         </div>
       </header>
+      <GlobalFilterBar filters={filters} setFilters={setFilters} opps={opps} />
 
       <main style={{ padding: 24, maxWidth: 1400, margin: "0 auto" }}>
-        {tab === "dashboard" && <Dashboard opps={opps} />}
-        {tab === "kanban" && <KanbanView opps={filtered} filters={filters} setFilters={setFilters} moveStage={moveStage} onEdit={(o) => setModal({ type: "edit", opp: o })} setModal={setModal} />}
-        {tab === "list" && <ListView opps={filtered} filters={filters} setFilters={setFilters} onEdit={(o) => setModal({ type: "edit", opp: o })} onDelete={deleteOpp} moveStage={moveStage} setModal={setModal} />}
-        {tab === "analytics" && <AnalyticsView opps={opps} />}
+        {tab === "dashboard" && <Dashboard opps={filtered} />}
+        {tab === "kanban" && <KanbanView opps={filtered} moveStage={moveStage} onEdit={(o) => setModal({ type: "edit", opp: o })} setModal={setModal} />}
+        {tab === "list" && <ListView opps={filtered} onEdit={(o) => setModal({ type: "edit", opp: o })} onDelete={deleteOpp} moveStage={moveStage} setModal={setModal} />}
+        {tab === "analytics" && <AnalyticsView opps={filtered} />}
       </main>
 
-      {modal?.type === "new" && <OppModal onSave={addOpp} onClose={() => setModal(null)} />}
-      {modal?.type === "edit" && <OppModal opp={modal.opp} onSave={updateOpp} onClose={() => setModal(null)} onDelete={() => { deleteOpp(modal.opp.id); setModal(null); }} />}
+      {modal?.type === "new" && <OppModal onSave={addOpp} onClose={() => setModal(null)} defaultSalesperson={user.name} />}
+      {modal?.type === "edit" && <OppModal opp={modal.opp} onSave={updateOpp} onClose={() => setModal(null)} onDelete={() => { deleteOpp(modal.opp.id); setModal(null); }} defaultSalesperson={user.name} />}
       {modal?.type === "lost" && <LostReasonModal opp={modal.opp} onSave={(reason) => { moveStage(modal.opp.id, LOST_STAGE, reason); setModal(null); }} onClose={() => setModal(null)} />}
     </div>
   );
@@ -252,7 +261,7 @@ function Dashboard({ opps }) {
 }
 
 /* =================== KANBAN =================== */
-function KanbanView({ opps, filters, setFilters, moveStage, onEdit, setModal }) {
+function KanbanView({ opps, moveStage, onEdit, setModal }) {
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
 
@@ -269,10 +278,7 @@ function KanbanView({ opps, filters, setFilters, moveStage, onEdit, setModal }) 
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-        <h2 style={h2Style}>Kanban</h2>
-        <FilterBar filters={filters} setFilters={setFilters} />
-      </div>
+      <h2 style={{ ...h2Style, marginBottom: 16 }}>Kanban</h2>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${ALL_STAGES.length},minmax(180px,1fr))`, gap: 10, overflowX: "auto", paddingBottom: 16 }}>
         {ALL_STAGES.map((s) => {
           const so = opps.filter((o) => o.stage === s);
@@ -293,6 +299,7 @@ function KanbanView({ opps, filters, setFilters, moveStage, onEdit, setModal }) 
                   style={{ background: C.card, borderRadius: 8, padding: 10, marginBottom: 6, cursor: "grab", fontSize: 12, borderLeft: `2px solid ${stageColor[s]}`, opacity: dragging === o.id ? 0.5 : 1 }}>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>{o.company}</div>
                   <div style={{ color: C.textDim }}>{o.contact}</div>
+                  {o.salesperson && <div style={{ color: C.textDim, fontSize: 10, marginTop: 1 }}>👤 {o.salesperson}</div>}
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
                     <span style={{ color: stageColor[s], fontFamily: "Space Mono", fontWeight: 700 }}>{fmt(o.amount || 0)}</span>
                     <span style={{ color: C.textDim, fontSize: 10 }}>{o.serviceType}</span>
@@ -311,79 +318,60 @@ function KanbanView({ opps, filters, setFilters, moveStage, onEdit, setModal }) 
 }
 
 /* =================== LIST =================== */
-function ListView({ opps, filters, setFilters, onEdit, onDelete, moveStage, setModal }) {
+function ListView({ opps, onEdit, onDelete, moveStage, setModal }) {
   const [sort, setSort] = useState({ col: null, dir: "desc" });
-  const [extraFilters, setExtraFilters] = useState({ orgType: "", companySize: "" });
 
   const toggleSort = (col) => {
     setSort((s) => s.col === col ? { col, dir: s.dir === "desc" ? "asc" : "desc" } : { col, dir: "desc" });
   };
 
   const displayed = useMemo(() => {
-    let rows = opps.filter((o) => {
-      if (extraFilters.orgType && o.orgType !== extraFilters.orgType) return false;
-      if (extraFilters.companySize && o.companySize !== extraFilters.companySize) return false;
-      return true;
-    });
+    let rows = [...opps];
     if (sort.col === "amount") {
-      rows = [...rows].sort((a, b) => sort.dir === "desc" ? (Number(b.amount) || 0) - (Number(a.amount) || 0) : (Number(a.amount) || 0) - (Number(b.amount) || 0));
+      rows.sort((a, b) => sort.dir === "desc" ? (Number(b.amount) || 0) - (Number(a.amount) || 0) : (Number(a.amount) || 0) - (Number(b.amount) || 0));
     } else if (sort.col === "date") {
-      rows = [...rows].sort((a, b) => sort.dir === "desc" ? (b.createdAt || "").localeCompare(a.createdAt || "") : (a.createdAt || "").localeCompare(b.createdAt || ""));
+      rows.sort((a, b) => sort.dir === "desc" ? (b.createdAt || "").localeCompare(a.createdAt || "") : (a.createdAt || "").localeCompare(b.createdAt || ""));
     }
     return rows;
-  }, [opps, extraFilters, sort]);
+  }, [opps, sort]);
 
   const SortIcon = ({ col }) => {
     if (sort.col !== col) return <span style={{ color: C.border, marginLeft: 4 }}>⇅</span>;
     return <span style={{ color: C.accent, marginLeft: 4 }}>{sort.dir === "desc" ? "↓" : "↑"}</span>;
   };
 
-  const thStyle = { padding: "10px 12px", color: C.textDim, fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${C.border}` };
-  const thSortStyle = { ...thStyle, cursor: "pointer", userSelect: "none" };
+  const thBase = { padding: "10px 12px", color: C.textDim, fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${C.border}` };
+  const thSort = { ...thBase, cursor: "pointer", userSelect: "none" };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
-        <h2 style={h2Style}>Listado de Oportunidades</h2>
-        <FilterBar filters={filters} setFilters={setFilters} />
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <select value={extraFilters.orgType} onChange={(e) => setExtraFilters({ ...extraFilters, orgType: e.target.value })} style={selectSmall}>
-          <option value="">Todos los tipos</option>
-          {ORG_TYPES.map((t) => <option key={t}>{t}</option>)}
-        </select>
-        <select value={extraFilters.companySize} onChange={(e) => setExtraFilters({ ...extraFilters, companySize: e.target.value })} style={selectSmall}>
-          <option value="">Todos los tamaños</option>
-          {COMPANY_SIZES.map((t) => <option key={t}>{t}</option>)}
-        </select>
-        {(extraFilters.orgType || extraFilters.companySize) && (
-          <button onClick={() => setExtraFilters({ orgType: "", companySize: "" })} style={{ ...btnSmall, color: C.textDim, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 10px" }}>Limpiar</button>
-        )}
-      </div>
+      <h2 style={h2Style}>Listado de Oportunidades</h2>
       <div style={{ background: C.card, borderRadius: 12, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: C.surface, textAlign: "left" }}>
-                <th style={thStyle}>Empresa</th>
-                <th style={thStyle}>Contacto</th>
-                <th style={thStyle}>Tipo</th>
-                <th style={thStyle}>Tamaño</th>
-                <th style={thStyle}>Servicio</th>
-                <th style={thSortStyle} onClick={() => toggleSort("amount")}>Monto<SortIcon col="amount" /></th>
-                <th style={thStyle}>Etapa</th>
-                <th style={thSortStyle} onClick={() => toggleSort("date")}>Fecha<SortIcon col="date" /></th>
-                <th style={thStyle}>Acciones</th>
+                <th style={thBase}>Empresa</th>
+                <th style={thBase}>Contacto</th>
+                <th style={thBase}>Vendedor</th>
+                <th style={thBase}>Tipo</th>
+                <th style={thBase}>Tamaño</th>
+                <th style={thBase}>Servicio</th>
+                <th style={thSort} onClick={() => toggleSort("amount")}>Monto<SortIcon col="amount" /></th>
+                <th style={thBase}>Etapa</th>
+                <th style={thSort} onClick={() => toggleSort("date")}>Fecha<SortIcon col="date" /></th>
+                <th style={thBase}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {displayed.length === 0 && (
-                <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: C.textDim }}>No hay oportunidades</td></tr>
+                <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: C.textDim }}>No hay oportunidades</td></tr>
               )}
               {displayed.map((o) => (
                 <tr key={o.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                   <td style={tdStyle}><span style={{ fontWeight: 600 }}>{o.company}</span></td>
                   <td style={tdStyle}>{o.contact}</td>
+                  <td style={{ ...tdStyle, color: C.textDim }}>{o.salesperson}</td>
                   <td style={{ ...tdStyle, color: C.textDim }}>{o.orgType}</td>
                   <td style={{ ...tdStyle, color: C.textDim }}>{o.companySize}</td>
                   <td style={tdStyle}>{o.serviceType}</td>
@@ -474,26 +462,55 @@ function AnalyticsView({ opps }) {
   );
 }
 
-/* =================== FILTER BAR =================== */
-function FilterBar({ filters, setFilters }) {
+/* =================== GLOBAL FILTER BAR =================== */
+function GlobalFilterBar({ filters, setFilters, opps }) {
+  const salespeople = useMemo(() => [...new Set(opps.map((o) => o.salesperson).filter(Boolean))].sort(), [opps]);
+  const hasFilters = Object.values(filters).some(Boolean);
+  const set = (k, v) => setFilters({ ...filters, [k]: v });
+  const clear = () => setFilters({ search: "", stage: "", service: "", orgType: "", companySize: "", salesperson: "" });
+
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <input placeholder="Buscar..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} style={{ ...inputSmall, width: 160 }} />
-      <select value={filters.stage} onChange={(e) => setFilters({ ...filters, stage: e.target.value })} style={selectSmall}>
-        <option value="">Todas las etapas</option>
+    <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "8px 24px", position: "sticky", top: 56, zIndex: 40, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <input
+        placeholder="Buscar empresa, contacto, vendedor..."
+        value={filters.search}
+        onChange={(e) => set("search", e.target.value)}
+        style={{ ...inputSmall, width: 220 }}
+      />
+      <select value={filters.stage} onChange={(e) => set("stage", e.target.value)} style={selectSmall}>
+        <option value="">Etapa</option>
         {ALL_STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
-      <select value={filters.service} onChange={(e) => setFilters({ ...filters, service: e.target.value })} style={selectSmall}>
-        <option value="">Todos los servicios</option>
+      <select value={filters.service} onChange={(e) => set("service", e.target.value)} style={selectSmall}>
+        <option value="">Servicio</option>
         {SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
+      <select value={filters.orgType} onChange={(e) => set("orgType", e.target.value)} style={selectSmall}>
+        <option value="">Tipo org.</option>
+        {ORG_TYPES.map((t) => <option key={t}>{t}</option>)}
+      </select>
+      <select value={filters.companySize} onChange={(e) => set("companySize", e.target.value)} style={selectSmall}>
+        <option value="">Tamaño</option>
+        {COMPANY_SIZES.map((t) => <option key={t}>{t}</option>)}
+      </select>
+      {salespeople.length > 0 && (
+        <select value={filters.salesperson} onChange={(e) => set("salesperson", e.target.value)} style={selectSmall}>
+          <option value="">Vendedor</option>
+          {salespeople.map((s) => <option key={s}>{s}</option>)}
+        </select>
+      )}
+      {hasFilters && (
+        <button onClick={clear} style={{ ...btnSmall, color: C.textDim, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 10px", fontSize: 11 }}>
+          × Limpiar
+        </button>
+      )}
     </div>
   );
 }
 
 /* =================== MODALS =================== */
-function OppModal({ opp, onSave, onClose, onDelete }) {
-  const [form, setForm] = useState(opp || { company: "", contact: "", orgType: ORG_TYPES[0], companySize: COMPANY_SIZES[0], serviceType: SERVICE_TYPES[0], amount: "", notes: "", stage: "Primer Contacto" });
+function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
+  const [form, setForm] = useState(opp || { company: "", contact: "", salesperson: defaultSalesperson || "", orgType: ORG_TYPES[0], companySize: COMPANY_SIZES[0], serviceType: SERVICE_TYPES[0], amount: "", notes: "", stage: "Primer Contacto" });
   const set = (k, v) => setForm({ ...form, [k]: v });
   const isEdit = !!opp;
 
@@ -504,6 +521,7 @@ function OppModal({ opp, onSave, onClose, onDelete }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Empresa"><input value={form.company} onChange={(e) => set("company", e.target.value)} style={inputStyle} placeholder="Nombre de empresa" /></Field>
           <Field label="Contacto"><input value={form.contact} onChange={(e) => set("contact", e.target.value)} style={inputStyle} placeholder="Nombre del contacto" /></Field>
+          <Field label="Vendedor"><input value={form.salesperson || ""} onChange={(e) => set("salesperson", e.target.value)} style={inputStyle} placeholder="Nombre del vendedor" /></Field>
           <Field label="Tipo de Org.">
             <select value={form.orgType} onChange={(e) => set("orgType", e.target.value)} style={inputStyle}>{ORG_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
           </Field>
