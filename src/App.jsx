@@ -553,6 +553,7 @@ function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
   const [form, setForm] = useState(opp || { company: "", contact: "", salesperson: defaultSalesperson || "", orgType: ORG_TYPES[0], companySize: COMPANY_SIZES[0], serviceType: SERVICE_TYPES[0], amount: "", notes: "", stage: "Primer Contacto", createdAt: today() });
   const set = (k, v) => setForm({ ...form, [k]: v });
   const isEdit = !!opp;
+  const isMobile = useIsMobile();
 
   // Stages to show in history: from "Primer Contacto" up to current stage (in pipeline order)
   const pipelineOrder = [...STAGES, WON_STAGE, LOST_STAGE];
@@ -575,9 +576,9 @@ function OppModal({ opp, onSave, onClose, onDelete, defaultSalesperson }) {
 
   return (
     <Overlay onClose={onClose}>
-      <div style={{ width: 520, maxHeight: "85vh", overflowY: "auto" }}>
-        <h3 style={{ margin: "0 0 20px", fontSize: 18, fontWeight: 600 }}>{isEdit ? "Editar Oportunidad" : "Nueva Oportunidad"}</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div style={{ width: isMobile ? "100%" : 520 }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 600 }}>{isEdit ? "Editar Oportunidad" : "Nueva Oportunidad"}</h3>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
           <Field label="Empresa"><input value={form.company} onChange={(e) => set("company", e.target.value)} style={inputStyle} placeholder="Nombre de empresa" /></Field>
           <Field label="Contacto"><input value={form.contact} onChange={(e) => set("contact", e.target.value)} style={inputStyle} placeholder="Nombre del contacto" /></Field>
           <Field label="Vendedor"><input value={form.salesperson || ""} onChange={(e) => set("salesperson", e.target.value)} style={inputStyle} placeholder="Nombre del vendedor" /></Field>
@@ -655,10 +656,21 @@ function LostReasonModal({ opp, onSave, onClose }) {
 }
 
 /* ── shared UI ── */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return isMobile;
+}
+
 function Overlay({ children, onClose }) {
+  const isMobile = useIsMobile();
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: C.surface, borderRadius: 16, padding: 24, border: `1px solid ${C.border}` }}>{children}</div>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", zIndex: 100, overflowY: "auto", padding: isMobile ? 0 : 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: C.surface, borderRadius: isMobile ? "16px 16px 0 0" : 16, padding: isMobile ? "20px 16px 32px" : 24, border: `1px solid ${C.border}`, width: isMobile ? "100%" : "auto", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto" }}>{children}</div>
     </div>
   );
 }
