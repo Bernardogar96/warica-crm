@@ -312,30 +312,80 @@ function KanbanView({ opps, filters, setFilters, moveStage, onEdit, setModal }) 
 
 /* =================== LIST =================== */
 function ListView({ opps, filters, setFilters, onEdit, onDelete, moveStage, setModal }) {
+  const [sort, setSort] = useState({ col: null, dir: "desc" });
+  const [extraFilters, setExtraFilters] = useState({ orgType: "", companySize: "" });
+
+  const toggleSort = (col) => {
+    setSort((s) => s.col === col ? { col, dir: s.dir === "desc" ? "asc" : "desc" } : { col, dir: "desc" });
+  };
+
+  const displayed = useMemo(() => {
+    let rows = opps.filter((o) => {
+      if (extraFilters.orgType && o.orgType !== extraFilters.orgType) return false;
+      if (extraFilters.companySize && o.companySize !== extraFilters.companySize) return false;
+      return true;
+    });
+    if (sort.col === "amount") {
+      rows = [...rows].sort((a, b) => sort.dir === "desc" ? (Number(b.amount) || 0) - (Number(a.amount) || 0) : (Number(a.amount) || 0) - (Number(b.amount) || 0));
+    } else if (sort.col === "date") {
+      rows = [...rows].sort((a, b) => sort.dir === "desc" ? (b.createdAt || "").localeCompare(a.createdAt || "") : (a.createdAt || "").localeCompare(b.createdAt || ""));
+    }
+    return rows;
+  }, [opps, extraFilters, sort]);
+
+  const SortIcon = ({ col }) => {
+    if (sort.col !== col) return <span style={{ color: C.border, marginLeft: 4 }}>⇅</span>;
+    return <span style={{ color: C.accent, marginLeft: 4 }}>{sort.dir === "desc" ? "↓" : "↑"}</span>;
+  };
+
+  const thStyle = { padding: "10px 12px", color: C.textDim, fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${C.border}` };
+  const thSortStyle = { ...thStyle, cursor: "pointer", userSelect: "none" };
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
         <h2 style={h2Style}>Listado de Oportunidades</h2>
         <FilterBar filters={filters} setFilters={setFilters} />
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        <select value={extraFilters.orgType} onChange={(e) => setExtraFilters({ ...extraFilters, orgType: e.target.value })} style={selectSmall}>
+          <option value="">Todos los tipos</option>
+          {ORG_TYPES.map((t) => <option key={t}>{t}</option>)}
+        </select>
+        <select value={extraFilters.companySize} onChange={(e) => setExtraFilters({ ...extraFilters, companySize: e.target.value })} style={selectSmall}>
+          <option value="">Todos los tamaños</option>
+          {COMPANY_SIZES.map((t) => <option key={t}>{t}</option>)}
+        </select>
+        {(extraFilters.orgType || extraFilters.companySize) && (
+          <button onClick={() => setExtraFilters({ orgType: "", companySize: "" })} style={{ ...btnSmall, color: C.textDim, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 10px" }}>Limpiar</button>
+        )}
       </div>
       <div style={{ background: C.card, borderRadius: 12, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: C.surface, textAlign: "left" }}>
-                {["Empresa", "Contacto", "Servicio", "Monto", "Etapa", "Fecha", "Acciones"].map((h) => (
-                  <th key={h} style={{ padding: "10px 12px", color: C.textDim, fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, borderBottom: `1px solid ${C.border}` }}>{h}</th>
-                ))}
+                <th style={thStyle}>Empresa</th>
+                <th style={thStyle}>Contacto</th>
+                <th style={thStyle}>Tipo</th>
+                <th style={thStyle}>Tamaño</th>
+                <th style={thStyle}>Servicio</th>
+                <th style={thSortStyle} onClick={() => toggleSort("amount")}>Monto<SortIcon col="amount" /></th>
+                <th style={thStyle}>Etapa</th>
+                <th style={thSortStyle} onClick={() => toggleSort("date")}>Fecha<SortIcon col="date" /></th>
+                <th style={thStyle}>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {opps.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: C.textDim }}>No hay oportunidades</td></tr>
+              {displayed.length === 0 && (
+                <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: C.textDim }}>No hay oportunidades</td></tr>
               )}
-              {opps.map((o) => (
+              {displayed.map((o) => (
                 <tr key={o.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                   <td style={tdStyle}><span style={{ fontWeight: 600 }}>{o.company}</span></td>
                   <td style={tdStyle}>{o.contact}</td>
+                  <td style={{ ...tdStyle, color: C.textDim }}>{o.orgType}</td>
+                  <td style={{ ...tdStyle, color: C.textDim }}>{o.companySize}</td>
                   <td style={tdStyle}>{o.serviceType}</td>
                   <td style={{ ...tdStyle, fontFamily: "Space Mono", fontWeight: 700, color: stageColor[o.stage] }}>{fmt(o.amount || 0)}</td>
                   <td style={tdStyle}>
