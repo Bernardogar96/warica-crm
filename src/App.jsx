@@ -66,21 +66,6 @@ const getOppStatus = (opp) => {
 // Debe configurarse en .env como VITE_GCAL_WEBHOOK_URL o editar aquí directamente
 const GCAL_WEBHOOK_URL = import.meta.env.VITE_GCAL_WEBHOOK_URL || "";
 
-/* ── Google Calendar URL builder (fallback manual) ── */
-const buildGCalUrl = (opp) => {
-  const dateStr = (opp.eventDateTime || opp.createdAt || "").slice(0, 10).replace(/-/g, "");
-  const toGCal = (t) => t ? t.replace(":", "") + "00" : null;
-  const start = toGCal(opp.startTime) ? `${dateStr}T${toGCal(opp.startTime)}` : dateStr;
-  const end = toGCal(opp.endTime) ? `${dateStr}T${toGCal(opp.endTime)}` : dateStr;
-  const title = encodeURIComponent(opp.projectName || opp.company || "Evento");
-  const details = encodeURIComponent(
-    [opp.contact && `Contacto: ${opp.contact}`, opp.salesperson && `Vendedor: ${opp.salesperson}`,
-     opp.attendees && `Asistentes: ${opp.attendees}`, opp.notes].filter(Boolean).join("\n")
-  );
-  const location = encodeURIComponent(opp.location || "");
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
-};
-
 const ORG_TYPES = ["Empresa", "Colegio", "Gobierno", "ONG", "Asociación", "Otro"];
 const SIZE_RANGES = ["1-10", "11-50", "51-100", "101-200", "200+"];
 const inSizeRange = (val, range) => {
@@ -419,14 +404,41 @@ function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, moveStage, 
   const [calendarPrompt, setCalendarPrompt] = useState(null);
   const [filters, setFilters] = useState({ search: "", stage: "", salesperson: "", priority: "", orgType: "", sizeRange: "" });
 
+  // Validate that an eventos opp has all required fields before moving to Confirmado.
+  // Returns an array of missing field labels (empty if all good).
+  const missingEventFields = (opp) => {
+    const missing = [];
+    if (!opp?.eventDateTime) missing.push("fecha del evento");
+    if (!opp?.startTime) missing.push("hora de inicio");
+    if (!opp?.endTime) missing.push("hora de fin");
+    return missing;
+  };
+
   // Wrap moveStage to detect Confirmado transitions for eventos
   const moveStageWithCalendar = async (id, newStage, reason) => {
     const prevOpp = opps.find((o) => o.id === id);
     const wasConfirmed = prevOpp?.stage === CONFIRMED_STAGE;
+    const movingToConfirmed =
+      newStage === CONFIRMED_STAGE && !wasConfirmed && businessUnit === "eventos";
+
+    // Block the transition if required calendar fields are missing
+    if (movingToConfirmed) {
+      const missing = missingEventFields(prevOpp);
+      if (missing.length) {
+        alert(
+          `No se puede mover a Confirmado sin: ${missing.join(", ")}.\n\n` +
+          `Abre la oportunidad y completa estos campos antes de confirmarla.`
+        );
+        if (prevOpp) setModal({ type: "edit", opp: prevOpp });
+        return;
+      }
+    }
+
     await moveStage(id, newStage, reason);
-    if (newStage === CONFIRMED_STAGE && !wasConfirmed && businessUnit === "eventos") {
+
+    if (movingToConfirmed) {
       const opp = opps.find((o) => o.id === id);
-      if (opp) setCalendarPrompt(opp);
+      if (opp) setCalendarPrompt({ ...opp, stage: CONFIRMED_STAGE });
     }
   };
 
@@ -453,12 +465,28 @@ function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, moveStage, 
   const handleSave = async (data) => {
     const prevOpp = modal?.opp;
     const wasConfirmed = prevOpp?.stage === CONFIRMED_STAGE;
+    const movingToConfirmed =
+      data.stage === CONFIRMED_STAGE && !wasConfirmed && businessUnit === "eventos";
+
+    // Block save if moving to Confirmado without required calendar fields
+    if (movingToConfirmed) {
+      const missing = missingEventFields(data);
+      if (missing.length) {
+        alert(
+          `No se puede mover a Confirmado sin: ${missing.join(", ")}.\n\n` +
+          `Completa estos campos antes de guardar.`
+        );
+        return; // keep modal open so the user can fix it
+      }
+    }
+
     if (prevOpp) await updateOpp({ ...data, businessUnit });
     else await addOpp(data);
     setModal(null);
+
     // Trigger Google Calendar prompt if event was just confirmed
-    if (data.stage === CONFIRMED_STAGE && !wasConfirmed && businessUnit === "eventos") {
-      setCalendarPrompt({ ...data, businessUnit });
+    if (movingToConfirmed) {
+      setCalendarPrompt({ ...data, businessUnit, stage: CONFIRMED_STAGE });
     }
   };
 
@@ -530,9 +558,18 @@ function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, moveStage, 
           opp={calendarPrompt}
           onClose={() => setCalendarPrompt(null)}
           onSuccess={async (eventId, eventUrl) => {
-            // Guardar el eventId en la oportunidad para evitar duplicados
-            const updated = { ...calendarPrompt, gcalEventId: eventId, gcalEventUrl: eventUrl };
-            await updateOpp(updated);
+            // Read the freshest copy of the opp from state; fall back to
+            // calendarPrompt if the realtime update hasn't arrived yet.
+            // Force stage to CONFIRMED_STAGE so the calendar send never
+            // reverts the stage back to its old value.
+            const current = opps.find((o) => o.id === calendarPrompt.id) || calendarPrompt;
+            await updateOpp({
+              ...current,
+              businessUnit,
+              stage: CONFIRMED_STAGE,
+              gcalEventId: eventId,
+              gcalEventUrl: eventUrl,
+            });
             setCalendarPrompt(null);
           }}
         />
@@ -1144,18 +1181,6 @@ function OppModal({ opp, businessUnit, onSave, onClose, onDelete, defaultSalespe
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {isEdit && onDelete && <button onClick={onDelete} style={{ ...btnSmall, color: C.danger }}>Eliminar</button>}
-            {/* Botón Google Calendar — solo Eventos */}
-            {isEventos && (form.eventDateTime || form.createdAt) && (() => {
-              const isConfirmed = form.stage === CONFIRMED_STAGE;
-              const calStyle = isConfirmed
-                ? { ...btnPrimary, fontSize: 12, padding: "6px 12px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, animation: "none" }
-                : { ...btnSecondary, fontSize: 12, padding: "6px 12px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
-              return (
-                <a href={buildGCalUrl(form)} target="_blank" rel="noopener noreferrer" style={calStyle}>
-                  📅 {isConfirmed ? "Agregar a Google Calendar" : "Agregar al Calendario"}
-                </a>
-              );
-            })()}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={onClose} style={btnSecondary}>Cancelar</button>
