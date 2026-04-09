@@ -12,15 +12,25 @@
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { height: 100%; }
       body {
-        background: #0f1117;
-        color: #fff;
+        background: #faf9f5;
+        color: #1a1713;
         font-family: 'DM Sans', sans-serif;
+        font-feature-settings: "ss01", "cv11";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        letter-spacing: -0.008em;
       }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: #1a1d27; }
-      ::-webkit-scrollbar-thumb { background: #2e3347; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #3d4460; }
-      * { scrollbar-width: thin; scrollbar-color: #2e3347 #1a1d27; }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: #f5f1e8; }
+      ::-webkit-scrollbar-thumb { background: #d9cfb8; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #b8a989; }
+      * { scrollbar-width: thin; scrollbar-color: #d9cfb8 #f5f1e8; }
+      input:focus, textarea:focus, select:focus {
+        border-color: #c15f3c !important;
+        box-shadow: 0 0 0 3px rgba(193,95,60,0.12) !important;
+      }
+      button:active { transform: translateY(1px); }
     </style>
   </head>
   <body>

@@ -15,14 +15,17 @@ const LOST_STAGE = CANCELLED_STAGE;
 
 const getStageColor = (stage) => {
   const MAP = {
-    Backlog: "#94a3b8", Cotizado: "#60a5fa", Confirmado: "#a78bfa",
-    Completado: "#34d399", Cancelado: "#f87171",
+    Backlog:    "#a8a295",  // warm gray
+    Cotizado:   "#7a8aa3",  // muted slate blue
+    Confirmado: "#c15f3c",  // Claude terracotta (primary/active)
+    Completado: "#5e7a45",  // muted sage
+    Cancelado:  "#b34a3a",  // muted warm red
   };
-  return MAP[stage] || "#94a3b8";
+  return MAP[stage] || "#a8a295";
 };
 
 const PRIORITIES = ["Alta", "Media", "Baja"];
-const PRIORITY_COLOR = { Alta: "#f87171", Media: "#fbbf24", Baja: "#34d399" };
+const PRIORITY_COLOR = { Alta: "#b34a3a", Media: "#b5882a", Baja: "#7a9b6e" };
 
 const LOST_REASONS = [
   "Precio muy alto", "Eligió competencia", "Sin presupuesto", "No respondió",
@@ -53,9 +56,9 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const today = () => new Date().toISOString().slice(0, 10);
 
 const OPP_STATUSES = [
-  { value: "a_tiempo", label: "A tiempo",  color: "#34d399", icon: "✓" },
-  { value: "atrasada", label: "Atrasada",  color: "#f87171", icon: "⚠" },
-  { value: "en_pausa", label: "En pausa",  color: "#fbbf24", icon: "⏸" },
+  { value: "a_tiempo", label: "A tiempo", color: "#5e7a45", icon: "✓" },
+  { value: "atrasada", label: "Atrasada", color: "#b34a3a", icon: "⚠" },
+  { value: "en_pausa", label: "En pausa", color: "#b5882a", icon: "⏸" },
 ];
 const getOppStatus = (opp) => {
   return OPP_STATUSES.find((s) => s.value === opp.status) || OPP_STATUSES[0];
@@ -87,38 +90,62 @@ const emptyOpp = (unit, salesperson, stages) => ({
   activities: [], history: [],
 });
 
-/* ── Colors ── */
+/* ── Colors (Claude light palette) ── */
 const C = {
-  bg: "#0f1117", surface: "#181b24", card: "#1e2230", border: "#2a2f3e",
-  accent: "#5eead4", accentDim: "#2dd4bf30",
-  danger: "#f87171", dangerDim: "#f8717120",
-  warn: "#fbbf24", warnDim: "#fbbf2420",
-  success: "#34d399", successDim: "#34d39920",
-  text: "#e2e8f0", textDim: "#94a3b8", white: "#fff",
+  bg: "#faf9f5",             // warm cream background
+  surface: "#f5f1e8",        // beige for headers / sticky bars
+  card: "#ffffff",           // white cards
+  cardAlt: "#fbf9f3",        // subtle off-white for alt rows
+  border: "#ebe4d3",         // warm beige border
+  borderStrong: "#d9cfb8",   // slightly darker divider
+  accent: "#c15f3c",         // Claude terracotta orange
+  accentHover: "#a94e2e",    // darker on hover
+  accentDim: "#c15f3c14",    // ~8% alpha wash
+  danger: "#b34a3a",         // muted warm red
+  dangerDim: "#b34a3a14",
+  warn: "#b5882a",           // muted amber
+  warnDim: "#b5882a14",
+  success: "#5e7a45",        // muted sage
+  successDim: "#5e7a4514",
+  text: "#1a1713",           // warm near-black
+  textStrong: "#0c0a08",
+  textDim: "#7a7466",        // warm muted gray
+  textMuted: "#a39c8a",      // even more muted
+  white: "#fff",
+  shadow: "0 1px 2px rgba(20,15,8,0.04), 0 2px 8px rgba(20,15,8,0.03)",
+  shadowStrong: "0 2px 4px rgba(20,15,8,0.05), 0 8px 24px rgba(20,15,8,0.06)",
 };
 
 /* ── Styles (defined early so LoginScreen can use them) ── */
 const inputStyle = {
-  width: "100%", background: C.card, border: `1px solid ${C.border}`,
-  borderRadius: 8, padding: "8px 12px", color: C.text, fontSize: 13,
+  width: "100%", background: C.white, border: `1px solid ${C.border}`,
+  borderRadius: 10, padding: "9px 13px", color: C.text, fontSize: 13,
   fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+  transition: "border-color 120ms ease, box-shadow 120ms ease",
 };
-const inputSmall = { ...inputStyle, padding: "5px 10px", fontSize: 12 };
+const inputSmall = { ...inputStyle, padding: "6px 11px", fontSize: 12, borderRadius: 8 };
 const selectSmall = { ...inputSmall, cursor: "pointer" };
 const btnPrimary = {
-  background: C.accent, color: C.bg, border: "none", borderRadius: 8,
-  padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+  background: C.accent, color: C.white, border: "none", borderRadius: 10,
+  padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  fontFamily: "inherit", letterSpacing: "-0.005em",
+  transition: "background-color 120ms ease, transform 80ms ease",
 };
 const btnSecondary = {
-  background: "transparent", color: C.textDim, border: `1px solid ${C.border}`,
-  borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+  background: C.white, color: C.text, border: `1px solid ${C.border}`,
+  borderRadius: 10, padding: "9px 20px", fontSize: 13, fontWeight: 500,
+  cursor: "pointer", fontFamily: "inherit", letterSpacing: "-0.005em",
+  transition: "border-color 120ms ease, background-color 120ms ease",
 };
 const btnSmall = {
   background: "none", border: "none", color: C.accent,
-  cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px",
+  cursor: "pointer", fontSize: 12, fontWeight: 500, fontFamily: "inherit", padding: "2px 6px",
 };
-const tdStyle = { padding: "10px 12px", verticalAlign: "middle" };
-const h2Style = { margin: "0 0 16px", fontSize: 20, fontWeight: 600 };
+const tdStyle = { padding: "11px 14px", verticalAlign: "middle" };
+const h2Style = {
+  margin: "0 0 18px", fontSize: 20, fontWeight: 600,
+  letterSpacing: "-0.018em", color: C.textStrong,
+};
 
 /* =================== LOGIN =================== */
 function LoginScreen() {
@@ -150,7 +177,7 @@ function LoginScreen() {
 
   if (emailSent) return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 400, background: C.surface, borderRadius: 16, padding: 40, border: `1px solid ${C.border}`, textAlign: "center" }}>
+      <div style={{ width: 400, background: C.card, borderRadius: 16, padding: 40, border: `1px solid ${C.border}`, boxShadow: C.shadowStrong, textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
         <h2 style={{ color: C.text, fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Revisa tu correo</h2>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
@@ -166,7 +193,7 @@ function LoginScreen() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 400, background: C.surface, borderRadius: 16, padding: 40, border: `1px solid ${C.border}` }}>
+      <div style={{ width: 400, background: C.card, borderRadius: 16, padding: 40, border: `1px solid ${C.border}`, boxShadow: C.shadowStrong }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <img src={LOGO} alt={APP_NAME} style={{ height: 56, width: "auto" }} />
           <div style={{ color: C.textDim, marginTop: 8, fontSize: 14 }}>Sistema de gestión de oportunidades</div>
@@ -754,7 +781,7 @@ function KanbanView({ opps, moveStage, onEdit, setModal, filters, setFilters, al
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
                       <div style={{ fontWeight: 600, flex: 1 }}>{o.projectName || o.company}</div>
                       {o.source === "google_forms" && (
-                        <span style={{ fontSize: 9, background: "#4285f420", color: "#4285f4", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>Forms</span>
+                        <span style={{ fontSize: 9, background: C.accentDim, color: C.accent, borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.02em" }}>FORMS</span>
                       )}
                     </div>
                     {/* Cliente */}
@@ -919,7 +946,8 @@ function AnalyticsView({ opps, filters, setFilters, allOpps }) {
   cancelled.forEach((o) => { const r = o.lostReason || "Sin especificar"; reasonCount[r] = (reasonCount[r] || 0) + 1; });
   const sorted = Object.entries(reasonCount).sort((a, b) => b[1] - a[1]);
   const total = cancelled.length;
-  const pieColors = ["#f87171", "#fbbf24", "#60a5fa", "#a78bfa", "#34d399", "#5eead4", "#fb923c", "#e879f9"];
+  // Muted warm palette for pie chart slices
+  const pieColors = ["#c15f3c", "#b5882a", "#7a8aa3", "#a88ab5", "#5e7a45", "#8a9e94", "#d1936a", "#b1728a"];
 
   let cumAngle = 0;
   const slices = sorted.map(([reason, count], i) => {
@@ -1198,9 +1226,9 @@ function ActivitiesPanel({ activities, onUpdate }) {
   const [newDue, setNewDue] = useState("");
 
   const COLS = [
-    { id: "backlog",     label: "Backlog",     color: "#94a3b8" },
-    { id: "en_proceso",  label: "En Proceso",  color: "#60a5fa" },
-    { id: "completada",  label: "Completada",  color: "#34d399" },
+    { id: "backlog",     label: "Backlog",     color: "#a8a295" },
+    { id: "en_proceso",  label: "En Proceso",  color: "#c15f3c" },
+    { id: "completada",  label: "Completada",  color: "#5e7a45" },
   ];
 
   const pending = activities.filter((a) => a.status !== "completada");
@@ -1435,8 +1463,8 @@ function useIsMobile() {
 function Overlay({ children, onClose }) {
   const isMobile = useIsMobile();
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", zIndex: 100, overflowY: "auto", padding: isMobile ? 0 : 16 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: C.surface, borderRadius: isMobile ? "16px 16px 0 0" : 16, padding: isMobile ? "20px 16px 32px" : 24, border: `1px solid ${C.border}`, width: isMobile ? "100%" : "auto", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(26,23,19,0.32)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", zIndex: 100, overflowY: "auto", padding: isMobile ? 0 : 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderRadius: isMobile ? "16px 16px 0 0" : 16, padding: isMobile ? "20px 16px 32px" : 24, border: `1px solid ${C.border}`, boxShadow: C.shadowStrong, width: isMobile ? "100%" : "auto", maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto" }}>
         {children}
       </div>
     </div>
@@ -1714,7 +1742,7 @@ function PasswordRecoveryScreen() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 400, background: C.surface, borderRadius: 16, padding: 40, border: `1px solid ${C.border}` }}>
+      <div style={{ width: 400, background: C.card, borderRadius: 16, padding: 40, border: `1px solid ${C.border}`, boxShadow: C.shadowStrong }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <img src={LOGO} alt={APP_NAME} style={{ height: 48, width: "auto" }} />
           <div style={{ color: C.text, fontWeight: 600, fontSize: 18, marginTop: 16 }}>Nueva contraseña</div>
