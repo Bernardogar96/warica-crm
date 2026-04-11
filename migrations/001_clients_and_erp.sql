@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.employees (
   marital_status  TEXT,
   hire_date       DATE NOT NULL,
   contract_type   TEXT NOT NULL DEFAULT 'indeterminado',
-  employee_group  CHAR(1) NOT NULL CHECK (employee_group IN ('A','B','C')),
+  "group"         CHAR(1) NOT NULL DEFAULT 'A' CHECK ("group" IN ('A','B','C')),
   position        TEXT,
   department      TEXT,
   workday_type    TEXT DEFAULT 'completa',
@@ -119,9 +119,9 @@ VALUES (
     {"lowerLimit":15487.72,  "upperLimit":31236.49,  "fixedFee":1640.18,"rate":21.36},
     {"lowerLimit":31236.50,  "upperLimit":49233.00,  "fixedFee":5004.12,"rate":23.52},
     {"lowerLimit":49233.01,  "upperLimit":93993.90,  "fixedFee":9236.89,"rate":30.00},
-    {"lowerLimit":93993.91,  "upperLimit":125325.20, "fixedFee":22665.17","rate":32.00},
-    {"lowerLimit":125325.21, "upperLimit":375975.61, "fixedFee":32691.18,"rate":34.00},
-    {"lowerLimit":375975.62, "upperLimit":999999999, "fixedFee":117912.32","rate":35.00}
+    {"lowerLimit":93993.91,  "upperLimit":125325.20, "fixedFee":22665.17, "rate":32.00},
+    {"lowerLimit":125325.21, "upperLimit":375975.61, "fixedFee":32691.18, "rate":34.00},
+    {"lowerLimit":375975.62, "upperLimit":999999999, "fixedFee":117912.32,"rate":35.00}
   ]',
   '[
     {"lowerLimit":0.01,     "upperLimit":1768.96,  "subsidy":407.02},
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS public.payroll_periods (
   period_type     TEXT NOT NULL CHECK (period_type IN ('weekly','biweekly','monthly')),
   start_date      DATE NOT NULL,
   end_date        DATE NOT NULL,
-  employee_group  TEXT NOT NULL DEFAULT 'all',
+  "group"         TEXT NOT NULL DEFAULT 'all',
   status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','approved','paid')),
   total_gross     NUMERIC(14,2) DEFAULT 0,
   total_net       NUMERIC(14,2) DEFAULT 0,
