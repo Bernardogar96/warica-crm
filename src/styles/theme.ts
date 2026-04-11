@@ -23,7 +23,7 @@ export const LOST_STAGE = CANCELLED_STAGE;
 
 /* ── Business Units ── */
 export const BUSINESS_UNITS: BusinessUnit[] = [
-  { id: 'eventos', label: 'Eventos Warica', icon: '🎪', logo: '/warica-logo.png' },
+  { id: 'eventos', label: 'Eventos Warica', icon: '🎪', logo: '/warica-logo.jpg' },
   { id: 'proyectos', label: 'Proyectos del Abuelo', icon: '🏗', logo: '/abuelo-logo.png' },
   { id: 'excursiones', label: 'Excursiones', icon: '🏕' },
 ];
