@@ -26,25 +26,45 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const BUSINESS_UNIT = "eventos"; // "eventos" | "proyectos" | "excursiones"
 
 // Mapeo de preguntas del formulario → campos del CRM
-// Cambia los valores de la izquierda para que coincidan con los títulos EXACTOS de tus preguntas
+// Los títulos de la izquierda coinciden EXACTAMENTE con las preguntas del form de Warica Eventos
 const FIELD_MAP = {
-  "Nombre de la empresa o cliente": "company",
-  "Nombre del contacto":            "contact",
-  "Correo electrónico":             "email",
-  "Teléfono":                       "phone",
-  "Nombre del evento o proyecto":   "projectName",
-  "Fecha del evento":               "eventDateTime",
-  "Número de asistentes":           "attendees",
-  "Tipo de organización":           "orgType",
-  "Presupuesto estimado":           "amount",
-  "Notas o comentarios":            "notes",
+  "Email":                                        "email",
+  "Nombre completo del responsable del evento":   "contact",
+  "Teléfono de contacto":                         "phone",
+  "Nombre de tu empresa, colegio u organización": "company",
+  "Número de participantes":                      "attendees",
+  "Fecha(s) que tienes en mente para tu evento":  "eventDateTime",
+  "¿Qué tipo de evento te interesa realizar?":    "projectName",
+  "¿Qué tipo de grupo es?":                       "orgType",
+  "¿Hay algo especial que debamos considerar?":   "notes",
 };
 
 // ══════════════ NO MODIFICAR DEBAJO ══════════════
 
 function onFormSubmit(e) {
   try {
-    const responses = e.namedValues; // { "Pregunta": ["Respuesta"], ... }
+    // Construir el objeto de respuestas de forma que funcione con ambos tipos de trigger:
+    //  - "From form" (directo):       e.response (FormResponse)
+    //  - "From spreadsheet" (enlazado): e.namedValues ({ "Pregunta": ["Respuesta"] })
+    let responses = {};
+
+    if (e && e.response && typeof e.response.getItemResponses === "function") {
+      // Trigger configurado desde el formulario directamente
+      const itemResponses = e.response.getItemResponses();
+      for (const ir of itemResponses) {
+        const title = ir.getItem().getTitle();
+        const answer = ir.getResponse();
+        const value = Array.isArray(answer) ? answer.join(", ") : String(answer);
+        responses[title] = [value];
+      }
+    } else if (e && e.namedValues) {
+      // Trigger configurado desde un Spreadsheet enlazado
+      responses = e.namedValues;
+    } else {
+      Logger.log("Error: el evento no contiene ni e.response ni e.namedValues. " +
+                 "Revisa que el trigger esté configurado como 'On form submit' desde el formulario.");
+      return;
+    }
 
     // Construir el objeto de oportunidad
     const now = new Date();
