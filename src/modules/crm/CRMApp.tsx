@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ConfigCtx } from './context';
 import { Sidebar } from './Sidebar';
@@ -20,6 +21,7 @@ interface CRMAppProps {
 type MainView = 'unit' | 'profile' | 'admin' | 'clients';
 
 export function CRMApp({ user, onLogout }: CRMAppProps) {
+  const navigate = useNavigate();
   const [allOpps, setAllOpps] = useState<Opportunity[]>([]);
   const [businessUnit, setBusinessUnit] = useState('eventos');
   const [mainView, setMainView] = useState<MainView>('unit');
@@ -124,9 +126,31 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
           padding: '0 16px', height: 56, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <img src={LOGO} alt={APP_NAME} style={{ height: 28, width: 'auto', cursor: 'pointer' }}
               onClick={() => setMainView('unit')} />
+            <nav style={{ display: 'flex', gap: 2 }}>
+              {[
+                { path: '/crm', label: 'CRM' },
+                { path: '/nomina', label: 'Nómina' },
+                { path: '/ventas', label: 'Ventas' },
+                { path: '/compras', label: 'Compras' },
+              ].map(({ path, label }) => {
+                const active = path === '/crm';
+                return (
+                  <button key={path} onClick={() => navigate(path)}
+                    style={{
+                      background: active ? C.accentDim : 'transparent',
+                      color: active ? C.accent : C.textDim,
+                      border: 'none', borderRadius: 8, padding: '5px 12px',
+                      cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400,
+                      fontFamily: 'inherit',
+                    }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div onClick={() => setMainView('profile')}
