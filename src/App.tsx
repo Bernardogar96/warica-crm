@@ -16,7 +16,7 @@ import type { Session } from '@supabase/supabase-js';
 /* ── Auth Guard ── */
 function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/erp">
       <Routes>
         {/* CRM — full-screen, has its own nav/sidebar */}
         <Route path="/crm/*" element={<CRMApp user={user} onLogout={onLogout} />} />
