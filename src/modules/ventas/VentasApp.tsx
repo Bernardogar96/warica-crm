@@ -1,24 +1,27 @@
 import { useState } from 'react';
-import { ProjectsView } from './views/ProjectsView';
+import { FacturacionView } from './views/FacturacionView';
+import { CobranzaView } from './views/CobranzaView';
 import { ProjectDetail } from './views/ProjectDetail';
 import { SalesDashboard } from './views/SalesDashboard';
 import { C } from '@/styles/theme';
 
-type VentasView = 'dashboard' | 'projects';
+type VentasView = 'dashboard' | 'facturacion' | 'cobranza';
 
 const NAV_ITEMS: { id: VentasView; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'projects', label: 'Proyectos', icon: '📦' },
+  { id: 'dashboard',    label: 'Dashboard',    icon: '📊' },
+  { id: 'facturacion',  label: 'Facturación',  icon: '🧾' },
+  { id: 'cobranza',     label: 'Cobranza',     icon: '💰' },
 ];
 
 export function VentasApp() {
-  const [view, setView] = useState<VentasView>('dashboard');
+  const [view, setView] = useState<VentasView>('facturacion');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const navItem = (item: typeof NAV_ITEMS[0]) => {
-    const active = view === item.id;
+    const active = view === item.id && !selectedProjectId;
     return (
-      <button key={item.id} onClick={() => { setView(item.id); setSelectedProjectId(null); }}
+      <button key={item.id}
+        onClick={() => { setView(item.id); setSelectedProjectId(null); }}
         style={{
           background: active ? C.accentDim : 'transparent',
           color: active ? C.accent : C.textDim,
@@ -46,15 +49,17 @@ export function VentasApp() {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        {view === 'dashboard' && <SalesDashboard />}
-        {view === 'projects' && !selectedProjectId && (
-          <ProjectsView onSelectProject={(id) => setSelectedProjectId(id)} />
-        )}
-        {view === 'projects' && selectedProjectId && (
+        {selectedProjectId ? (
           <ProjectDetail
             projectId={selectedProjectId}
             onBack={() => setSelectedProjectId(null)}
           />
+        ) : (
+          <>
+            {view === 'dashboard'   && <SalesDashboard />}
+            {view === 'facturacion' && <FacturacionView onSelectProject={setSelectedProjectId} />}
+            {view === 'cobranza'    && <CobranzaView />}
+          </>
         )}
       </div>
     </div>
