@@ -9,7 +9,7 @@ import { AdminView } from '@/auth/AdminView';
 import { ClientsView } from './views/ClientsView';
 import { ClientDetail } from './views/ClientDetail';
 import {
-  C, LOGO, APP_NAME, DEFAULT_STAGES, LOST_REASONS, uid, today, emptyConfig, WON_STAGE,
+  C, LOGO, APP_NAME, DEFAULT_STAGES, LOST_REASONS, uid, today, emptyConfig, WON_STAGE, COMPLETED_STAGE,
 } from '@/styles/theme';
 import type { Opportunity, User, CrmConfig } from '@/types';
 
@@ -90,8 +90,8 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
     await supabase.from('opportunities').update({ data: updated }).eq('id', id);
     setAllOpps((prev) => prev.map((o) => (o.id === id ? updated : o)));
 
-    // Auto-create project when opportunity is won
-    if (newStage === WON_STAGE && opp.clientId) {
+    // Auto-create or update project when opportunity is won or completed
+    if ((newStage === WON_STAGE || newStage === COMPLETED_STAGE) && opp.clientId) {
       const existingProject = await supabase
         .from('projects').select('id').eq('opportunity_id', id).maybeSingle();
       if (!existingProject.data) {
@@ -103,9 +103,14 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
           project_name: opp.projectName || opp.company,
           service_type: opp.orgType || '',
           amount: Number(opp.amount) || 0,
-          status: 'activo',
+          status: newStage === COMPLETED_STAGE ? 'completado' : 'activo',
           start_date: today(),
+          completed_at: newStage === COMPLETED_STAGE ? today() : null,
         });
+      } else if (newStage === COMPLETED_STAGE) {
+        await supabase.from('projects')
+          .update({ status: 'completado', completed_at: today() })
+          .eq('opportunity_id', id);
       }
     }
   };
