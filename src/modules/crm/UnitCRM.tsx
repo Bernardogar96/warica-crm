@@ -11,7 +11,7 @@ import { AmountPromptModal } from './components/AmountPromptModal';
 import { emptyFilters } from './components/InlineFilters';
 import {
   C, btnPrimary, DEFAULT_STAGES, TABS,
-  QUOTED_STAGE, CONFIRMED_STAGE, CANCELLED_STAGE, WON_STAGE,
+  QUOTED_STAGE, CONFIRMED_STAGE, CANCELLED_STAGE, WON_STAGE, COMPLETED_STAGE,
   hasValidAmount, inSizeRange, today,
 } from '@/styles/theme';
 import type { Opportunity, User } from '@/types';
@@ -54,8 +54,8 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
     const prevOpp = opps.find((o) => o.id === id);
     if (!prevOpp) return;
 
-    // Block moving to "Cerrado Ganado" without a client profile
-    if (newStage === WON_STAGE && !prevOpp.clientId) {
+    // Block moving to "Cerrado Ganado" or "Completado" without a client profile
+    if ((newStage === WON_STAGE || newStage === COMPLETED_STAGE) && !prevOpp.clientId) {
       alert('Para cerrar esta oportunidad necesitas vincular un perfil de cliente con datos fiscales completos (RFC, régimen fiscal, uso de CFDI y dirección fiscal).');
       return;
     }
@@ -158,7 +158,7 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
     const movingToConfirmed = data.stage === CONFIRMED_STAGE && !wasConfirmed;
     const movingToConfirmedEventos = movingToConfirmed && businessUnit === 'eventos';
 
-    if (data.stage === WON_STAGE && !data.clientId) {
+    if ((data.stage === WON_STAGE || data.stage === COMPLETED_STAGE) && !data.clientId) {
       alert('Para cerrar esta oportunidad necesitas vincular un perfil de cliente con datos fiscales completos (RFC, régimen fiscal, uso de CFDI y dirección fiscal).');
       return;
     }
