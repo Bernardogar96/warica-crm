@@ -250,7 +250,7 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
       {modal?.type === 'cancel' && (
         <CancelReasonModal
           opp={modal.opp}
-          onSave={(reason) => { moveStageWithCalendar(modal.opp.id, CANCELLED_STAGE, reason); setModal(null); }}
+          onSave={(reason) => { moveStageWithCalendar(modal.opp.id, LOST_STAGE, reason); setModal(null); }}
           onClose={() => setModal(null)}
         />
       )}
@@ -268,7 +268,7 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
           onClose={() => setCalendarPrompt(null)}
           onSuccess={async (eventId, eventUrl) => {
             const current = opps.find((o) => o.id === calendarPrompt.id) || calendarPrompt;
-            await updateOpp({ ...current, businessUnit, stage: CONFIRMED_STAGE, gcalEventId: eventId, gcalEventUrl: eventUrl });
+            await updateOpp({ ...current, businessUnit, gcalEventId: eventId, gcalEventUrl: eventUrl });
             setCalendarPrompt(null);
           }}
         />

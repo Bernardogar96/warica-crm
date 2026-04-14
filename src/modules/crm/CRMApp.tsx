@@ -73,10 +73,30 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
   };
 
   const updateOpp = async (data: Opportunity) => {
+    const prevOpp = allOpps.find((o) => o.id === data.id);
     await supabase.from('opportunities').update({
       data, client_id: data.clientId || null,
     }).eq('id', data.id);
     setAllOpps((prev) => prev.map((o) => (o.id === data.id ? { ...o, ...data } : o)));
+
+    // Auto-create project if transitioning to WON_STAGE via modal/amount prompt
+    if (data.stage === WON_STAGE && prevOpp?.stage !== WON_STAGE && data.clientId) {
+      const existingProject = await supabase
+        .from('projects').select('id').eq('opportunity_id', data.id).maybeSingle();
+      if (!existingProject.data) {
+        await supabase.from('projects').insert({
+          id: uid(),
+          opportunity_id: data.id,
+          client_id: data.clientId,
+          business_unit: data.businessUnit || 'eventos',
+          project_name: data.projectName || data.company,
+          service_type: data.orgType || '',
+          amount: Number(data.amount) || 0,
+          status: 'activo',
+          start_date: today(),
+        });
+      }
+    }
   };
 
   const moveStage = async (id: string, newStage: string, reason?: string) => {
