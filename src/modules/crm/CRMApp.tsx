@@ -172,12 +172,14 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
 
         {/* Body */}
         <div style={{ display: 'flex', flex: 1 }}>
-          <Sidebar
-            businessUnit={businessUnit}
-            onSelect={goUnit}
-            mainView={mainView}
-            onClientsClick={() => { setMainView('clients'); setSelectedClientId(null); }}
-          />
+          {(mainView === 'unit' || mainView === 'clients') && (
+            <Sidebar
+              businessUnit={businessUnit}
+              onSelect={goUnit}
+              mainView={mainView}
+              onClientsClick={() => { setMainView('clients'); setSelectedClientId(null); }}
+            />
+          )}
           <div style={{ flex: 1, minWidth: 0 }}>
             {mainView === 'profile' && (
               <div style={{ padding: 24, maxWidth: 560, margin: '0 auto' }}>
@@ -185,7 +187,7 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
               </div>
             )}
             {mainView === 'admin' && isAdmin && (
-              <div style={{ padding: 24 }}>
+              <div style={{ padding: 24, maxWidth: 960, margin: '0 auto' }}>
                 <AdminView currentUserId={user.userId} />
               </div>
             )}

@@ -103,7 +103,7 @@ export function KanbanView({ opps, moveStage, onEdit, setModal, filters, setFilt
                       <span style={{ color, fontFamily: 'Space Mono', fontWeight: 700 }}>{fmt(Number(o.amount) || 0)}</span>
                       {o.salesperson && <span style={{ color: C.textDim, fontSize: 10 }}>👤 {o.salesperson}</span>}
                     </div>
-                    {o.stage === CANCELLED_STAGE && o.lostReason && (
+                    {o.stage === LOST_STAGE && o.lostReason && (
                       <div style={{ marginTop: 4, fontSize: 10, color: C.danger, background: C.dangerDim, borderRadius: 4, padding: '2px 6px' }}>
                         {o.lostReason}
                       </div>
