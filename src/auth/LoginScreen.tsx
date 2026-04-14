@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { C, inputStyle, btnPrimary, LOGO, APP_NAME } from '@/styles/theme';
 
 export function LoginScreen() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [name, setName] = useState('');
@@ -18,6 +18,15 @@ export function LoginScreen() {
       return;
     }
     setLoading(true);
+    if (mode === 'reset') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/erp`,
+      });
+      if (error) setErr(error.message);
+      else setEmailSent(true);
+      setLoading(false);
+      return;
+    }
     if (mode === 'register') {
       const { error } = await supabase.auth.signUp({
         email,
@@ -40,9 +49,11 @@ export function LoginScreen() {
           <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
           <h2 style={{ color: C.text, fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Revisa tu correo</h2>
           <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-            Te enviamos un enlace de confirmación a{' '}
+            Te enviamos un enlace a{' '}
             <strong style={{ color: C.accent }}>{email}</strong>.<br />
-            Haz click en el enlace para activar tu cuenta y luego inicia sesión.
+            {mode === 'reset'
+              ? 'Haz click en el enlace para restablecer tu contraseña.'
+              : 'Haz click en el enlace para activar tu cuenta y luego inicia sesión.'}
           </p>
           <button onClick={() => { setEmailSent(false); setMode('login'); }} style={{ ...btnPrimary, width: '100%' }}>
             Ya confirmé, iniciar sesión
@@ -64,15 +75,25 @@ export function LoginScreen() {
         )}
         <input placeholder="correo@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)}
           style={{ ...inputStyle, marginBottom: 8 }} type="email" />
-        <input placeholder="Contraseña" value={pass} onChange={(e) => setPass(e.target.value)}
-          style={{ ...inputStyle, marginBottom: 8 }} type="password"
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()} />
+        {mode !== 'reset' && (
+          <input placeholder="Contraseña" value={pass} onChange={(e) => setPass(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 8 }} type="password"
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()} />
+        )}
         {err && <div style={{ color: C.danger, fontSize: 13, marginBottom: 12 }}>{err}</div>}
         <button onClick={handleSubmit} disabled={loading}
           style={{ ...btnPrimary, width: '100%', marginTop: 4, opacity: loading ? 0.7 : 1 }}>
-          {loading ? '...' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+          {loading ? '...' : mode === 'login' ? 'Iniciar sesión' : mode === 'register' ? 'Crear cuenta' : 'Enviar enlace'}
         </button>
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
+        <div style={{ textAlign: 'center', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {mode === 'login' && (
+            <span style={{ color: C.textDim, fontSize: 13 }}>
+              <span onClick={() => { setMode('reset'); setErr(''); }}
+                style={{ color: C.accent, cursor: 'pointer' }}>
+                ¿Olvidaste tu contraseña?
+              </span>
+            </span>
+          )}
           <span style={{ color: C.textDim, fontSize: 13 }}>
             {mode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
             <span onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}
