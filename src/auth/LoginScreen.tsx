@@ -24,7 +24,7 @@ export function LoginScreen() {
     setLoading(true);
     if (mode === 'reset') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/erp`,
+        redirectTo: 'https://www.abuelo.mx/erp',
       });
       if (error) setErr(error.message);
       else setEmailSent(true);
