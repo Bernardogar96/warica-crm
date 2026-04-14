@@ -13,8 +13,12 @@ export function LoginScreen() {
 
   const handleSubmit = async () => {
     setErr('');
-    if (!email.includes('@') || pass.length < 4) {
-      setErr('Correo inválido o contraseña muy corta');
+    if (!email.includes('@')) {
+      setErr('Correo inválido');
+      return;
+    }
+    if (mode !== 'reset' && pass.length < 4) {
+      setErr('Contraseña muy corta');
       return;
     }
     setLoading(true);
