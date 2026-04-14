@@ -14,7 +14,7 @@ const NAV_ITEMS: { id: VentasView; label: string; icon: string }[] = [
 ];
 
 export function VentasApp() {
-  const [view, setView] = useState<VentasView>('facturacion');
+  const [view, setView] = useState<VentasView>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const navItem = (item: typeof NAV_ITEMS[0]) => {

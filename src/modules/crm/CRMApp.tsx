@@ -85,7 +85,7 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
         .from('projects').select('id').eq('opportunity_id', data.id).maybeSingle();
       if (!existingProject.data) {
         await supabase.from('projects').insert({
-          id: uid(),
+          id: crypto.randomUUID(),
           opportunity_id: data.id,
           client_id: data.clientId,
           business_unit: data.businessUnit || 'eventos',
@@ -116,7 +116,7 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
         .from('projects').select('id').eq('opportunity_id', id).maybeSingle();
       if (!existingProject.data) {
         await supabase.from('projects').insert({
-          id: uid(),
+          id: crypto.randomUUID(),
           opportunity_id: id,
           client_id: opp.clientId,
           business_unit: opp.businessUnit || 'eventos',
@@ -152,8 +152,8 @@ export function CRMApp({ user, onLogout }: CRMAppProps) {
             <nav style={{ display: 'flex', gap: 2 }}>
               {[
                 { path: '/crm', label: 'CRM' },
-                { path: '/nomina', label: 'Nómina' },
                 { path: '/ventas', label: 'Ventas' },
+                { path: '/nomina', label: 'Nómina' },
                 { path: '/compras', label: 'Compras' },
               ].map(({ path, label }) => {
                 const active = path === '/crm';

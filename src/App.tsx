@@ -55,8 +55,8 @@ function ERPShell({ user, onLogout, children }: { user: User; onLogout: () => vo
           </NavLink>
           <nav style={{ display: 'flex', gap: 2 }}>
             <NavLink to="/crm" style={navLinkStyle}>CRM</NavLink>
-            <NavLink to="/nomina" style={navLinkStyle}>Nómina</NavLink>
             <NavLink to="/ventas" style={navLinkStyle}>Ventas</NavLink>
+            <NavLink to="/nomina" style={navLinkStyle}>Nómina</NavLink>
             <NavLink to="/compras" style={navLinkStyle}>Compras</NavLink>
           </nav>
         </div>
