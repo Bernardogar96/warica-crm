@@ -1,4 +1,4 @@
-import { C, h2Style, pct, CANCELLED_STAGE } from '@/styles/theme';
+import { C, h2Style, pct, LOST_STAGE, CANCELLED_STAGE } from '@/styles/theme';
 import { InlineFilters } from './InlineFilters';
 import type { Opportunity } from '@/types';
 import type { Filters } from './InlineFilters';
@@ -13,7 +13,7 @@ interface AnalyticsViewProps {
 const PIE_COLORS = ['#c15f3c', '#b5882a', '#7a8aa3', '#a88ab5', '#5e7a45', '#8a9e94', '#d1936a', '#b1728a'];
 
 export function AnalyticsView({ opps, filters, setFilters, allOpps }: AnalyticsViewProps) {
-  const cancelled = opps.filter((o) => o.stage === CANCELLED_STAGE);
+  const cancelled = opps.filter((o) => o.stage === LOST_STAGE || o.stage === CANCELLED_STAGE);
   const reasonCount: Record<string, number> = {};
   cancelled.forEach((o) => { const r = o.lostReason || 'Sin especificar'; reasonCount[r] = (reasonCount[r] || 0) + 1; });
   const sorted = Object.entries(reasonCount).sort((a, b) => b[1] - a[1]);

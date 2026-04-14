@@ -11,7 +11,7 @@ import { AmountPromptModal } from './components/AmountPromptModal';
 import { emptyFilters } from './components/InlineFilters';
 import {
   C, btnPrimary, DEFAULT_STAGES, TABS,
-  QUOTED_STAGE, CONFIRMED_STAGE, CANCELLED_STAGE, WON_STAGE, COMPLETED_STAGE,
+  QUOTED_STAGE, LOST_STAGE, WON_STAGE,
   hasValidAmount, inSizeRange, today,
 } from '@/styles/theme';
 import type { Opportunity, User } from '@/types';
@@ -54,31 +54,31 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
     const prevOpp = opps.find((o) => o.id === id);
     if (!prevOpp) return;
 
-    // Block moving to "Cerrado Ganado" or "Completado" without a client profile
-    if ((newStage === WON_STAGE || newStage === COMPLETED_STAGE) && !prevOpp.clientId) {
+    // Block moving to "Cerrado Ganado" without a client profile
+    if (newStage === WON_STAGE && !prevOpp.clientId) {
       alert('Para cerrar esta oportunidad necesitas vincular un perfil de cliente con datos fiscales completos (RFC, régimen fiscal, uso de CFDI y dirección fiscal).');
       return;
     }
 
     const movingToQuoted = newStage === QUOTED_STAGE && prevOpp.stage !== QUOTED_STAGE;
-    const movingToConfirmed = newStage === CONFIRMED_STAGE && prevOpp.stage !== CONFIRMED_STAGE;
+    const movingToWon = newStage === WON_STAGE && prevOpp.stage !== WON_STAGE;
 
     if (!skipAmountCheck) {
       if (movingToQuoted && !hasValidAmount(prevOpp)) {
         setAmountPrompt({ oppId: id, targetStage: QUOTED_STAGE, currentAmount: prevOpp.amount || '', mode: 'set', reason });
         return;
       }
-      if (movingToConfirmed) {
-        setAmountPrompt({ oppId: id, targetStage: CONFIRMED_STAGE, currentAmount: prevOpp.amount || '', mode: hasValidAmount(prevOpp) ? 'confirm' : 'set', reason });
+      if (movingToWon && !hasValidAmount(prevOpp)) {
+        setAmountPrompt({ oppId: id, targetStage: WON_STAGE, currentAmount: prevOpp.amount || '', mode: 'set', reason });
         return;
       }
     }
 
-    const movingToConfirmedEventos = movingToConfirmed && businessUnit === 'eventos';
-    if (movingToConfirmedEventos) {
+    // For eventos: validate event fields before marking as won
+    if (movingToWon && businessUnit === 'eventos') {
       const missing = missingEventFields(prevOpp);
       if (missing.length) {
-        alert(`No se puede mover a Confirmado sin: ${missing.join(', ')}.\n\nAbre la oportunidad y completa estos campos.`);
+        alert(`No se puede mover a Cerrado Ganado sin: ${missing.join(', ')}.\n\nAbre la oportunidad y completa estos campos.`);
         setModal({ type: 'edit', opp: prevOpp });
         return;
       }
@@ -86,9 +86,9 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
 
     await moveStage(id, newStage, reason);
 
-    if (movingToConfirmedEventos) {
+    if (movingToWon && businessUnit === 'eventos') {
       const opp = opps.find((o) => o.id === id);
-      if (opp) setCalendarPrompt({ ...opp, stage: CONFIRMED_STAGE });
+      if (opp) setCalendarPrompt({ ...opp, stage: WON_STAGE });
     }
   };
 
@@ -105,10 +105,10 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
       return;
     }
 
-    if (targetStage === CONFIRMED_STAGE && businessUnit === 'eventos') {
+    if (targetStage === WON_STAGE && businessUnit === 'eventos') {
       const missing = missingEventFields(opp);
       if (missing.length) {
-        alert(`No se puede mover a Confirmado sin: ${missing.join(', ')}.\n\nSe guardará el monto pero debes completar esos campos.`);
+        alert(`No se puede mover a Cerrado Ganado sin: ${missing.join(', ')}.\n\nSe guardará el monto pero debes completar esos campos.`);
         const updatedAmtOnly = { ...opp, amount: newAmount };
         await updateOpp(updatedAmtOnly);
         setAmountPrompt(null);
@@ -127,7 +127,7 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
     await updateOpp(updated);
     setAmountPrompt(null);
 
-    if (targetStage === CONFIRMED_STAGE && businessUnit === 'eventos') {
+    if (targetStage === WON_STAGE && businessUnit === 'eventos') {
       setCalendarPrompt({ ...updated });
     }
   };
@@ -154,11 +154,10 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
 
   const handleSave = async (data: Partial<Opportunity>) => {
     const prevOpp = modal && 'opp' in modal ? modal.opp : undefined;
-    const wasConfirmed = prevOpp?.stage === CONFIRMED_STAGE;
-    const movingToConfirmed = data.stage === CONFIRMED_STAGE && !wasConfirmed;
-    const movingToConfirmedEventos = movingToConfirmed && businessUnit === 'eventos';
+    const movingToWon = data.stage === WON_STAGE && prevOpp?.stage !== WON_STAGE;
+    const movingToWonEventos = movingToWon && businessUnit === 'eventos';
 
-    if ((data.stage === WON_STAGE || data.stage === COMPLETED_STAGE) && !data.clientId) {
+    if (data.stage === WON_STAGE && !data.clientId) {
       alert('Para cerrar esta oportunidad necesitas vincular un perfil de cliente con datos fiscales completos (RFC, régimen fiscal, uso de CFDI y dirección fiscal).');
       return;
     }
@@ -168,21 +167,15 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
       return;
     }
 
-    if (movingToConfirmed && !hasValidAmount(data)) {
-      alert('Para mover la oportunidad a Confirmado tienes que tener un monto cotizado mayor que $0.');
+    if (movingToWon && !hasValidAmount(data)) {
+      alert('Para mover la oportunidad a Cerrado Ganado tienes que tener un monto cotizado mayor que $0.');
       return;
     }
 
-    if (movingToConfirmed) {
-      const n = Number(data.amount);
-      const ok = window.confirm(`Vas a confirmar esta oportunidad con un monto de $${n.toLocaleString()} MXN.\n\n¿Es correcto el monto?`);
-      if (!ok) return;
-    }
-
-    if (movingToConfirmedEventos) {
+    if (movingToWonEventos) {
       const missing = missingEventFields(data);
       if (missing.length) {
-        alert(`No se puede mover a Confirmado sin: ${missing.join(', ')}.\n\nCompleta estos campos antes de guardar.`);
+        alert(`No se puede mover a Cerrado Ganado sin: ${missing.join(', ')}.\n\nCompleta estos campos antes de guardar.`);
         return;
       }
     }
@@ -191,8 +184,8 @@ export function UnitCRM({ businessUnit, opps, addOpp, updateOpp, deleteOpp, move
     else await addOpp(data);
     setModal(null);
 
-    if (movingToConfirmedEventos) {
-      setCalendarPrompt({ ...data, businessUnit, stage: CONFIRMED_STAGE } as Opportunity);
+    if (movingToWonEventos) {
+      setCalendarPrompt({ ...data, businessUnit, stage: WON_STAGE } as Opportunity);
     }
   };
 

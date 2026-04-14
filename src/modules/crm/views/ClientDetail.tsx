@@ -3,7 +3,7 @@ import { useClient, useUpdateClient } from '@/modules/crm/hooks/useClients';
 import { ClientModal } from '@/modules/crm/components/ClientModal';
 import {
   C, h2Style, fmt, btnPrimary, btnSecondary, btnSmall, getStageColor,
-  COMPLETED_STAGE, CANCELLED_STAGE, WON_STAGE,
+  COMPLETED_STAGE, LOST_STAGE, WON_STAGE,
 } from '@/styles/theme';
 import type { Opportunity } from '@/types';
 
@@ -21,7 +21,7 @@ export function ClientDetail({ clientId, allOpps, onBack }: ClientDetailProps) {
 
   const clientOpps = allOpps.filter((o) => o.clientId === clientId);
   const wonOpps = clientOpps.filter((o) => o.stage === WON_STAGE || o.stage === COMPLETED_STAGE);
-  const activeOpps = clientOpps.filter((o) => o.stage !== COMPLETED_STAGE && o.stage !== CANCELLED_STAGE && o.stage !== WON_STAGE);
+  const activeOpps = clientOpps.filter((o) => o.stage !== COMPLETED_STAGE && o.stage !== LOST_STAGE && o.stage !== WON_STAGE);
   const totalBilled = wonOpps.reduce((s, o) => s + (Number(o.amount) || 0), 0);
   const avgTicket = wonOpps.length > 0 ? totalBilled / wonOpps.length : 0;
 

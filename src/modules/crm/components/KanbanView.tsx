@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useConfig } from '@/modules/crm/context';
 import {
   C, h2Style, fmt, getStageColor, getOppStatus, DEFAULT_STAGES,
-  CANCELLED_STAGE, PRIORITY_COLOR,
+  LOST_STAGE, PRIORITY_COLOR,
 } from '@/styles/theme';
 import { InlineFilters } from './InlineFilters';
 import type { Opportunity } from '@/types';
@@ -28,7 +28,7 @@ export function KanbanView({ opps, moveStage, onEdit, setModal, filters, setFilt
 
   const handleDrop = (stage: string) => {
     if (!dragging) return;
-    if (stage === CANCELLED_STAGE) {
+    if (stage === LOST_STAGE) {
       const opp = opps.find((o) => o.id === dragging);
       setModal({ type: 'cancel', opp });
     } else {

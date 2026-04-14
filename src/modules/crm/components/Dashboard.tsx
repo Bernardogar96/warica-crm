@@ -1,5 +1,5 @@
 import { useConfig } from '@/modules/crm/context';
-import { C, h2Style, fmt, pct, getStageColor, DEFAULT_STAGES, COMPLETED_STAGE, CANCELLED_STAGE, WON_STAGE } from '@/styles/theme';
+import { C, h2Style, fmt, pct, getStageColor, DEFAULT_STAGES, LOST_STAGE, WON_STAGE, COMPLETED_STAGE } from '@/styles/theme';
 import { InlineFilters } from './InlineFilters';
 import type { Opportunity } from '@/types';
 import type { Filters } from './InlineFilters';
@@ -15,19 +15,18 @@ export function Dashboard({ opps, filters, setFilters, allOpps }: DashboardProps
   const { config } = useConfig();
   const stages = config.stages || DEFAULT_STAGES;
 
-  const active = opps.filter((o) => o.stage !== COMPLETED_STAGE && o.stage !== CANCELLED_STAGE && o.stage !== WON_STAGE);
-  const won = opps.filter((o) => o.stage === WON_STAGE);
-  const completed = opps.filter((o) => o.stage === COMPLETED_STAGE);
-  const allClosed = [...won, ...completed];
-  const cancelled = opps.filter((o) => o.stage === CANCELLED_STAGE);
-  const closedWithDecision = [...allClosed, ...cancelled];
+  const active = opps.filter((o) => o.stage !== COMPLETED_STAGE && o.stage !== LOST_STAGE && o.stage !== WON_STAGE);
+  const won = opps.filter((o) => o.stage === WON_STAGE || o.stage === COMPLETED_STAGE);
+  const lost = opps.filter((o) => o.stage === LOST_STAGE);
+  const closedWithDecision = [...won, ...lost];
+  const allClosed = won;
   const hitRate = pct(allClosed.length, closedWithDecision.length);
 
   const totalActive = active.reduce((s, o) => s + (Number(o.amount) || 0), 0);
-  const totalWon = [...won, ...completed].reduce((s, o) => s + (Number(o.amount) || 0), 0);
+  const totalWon = won.reduce((s, o) => s + (Number(o.amount) || 0), 0);
 
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const wonThisMonth = allClosed.filter((o) =>
+  const wonThisMonth = won.filter((o) =>
     (o.history || []).some((e) =>
       (e.stage === WON_STAGE || e.stage === COMPLETED_STAGE) && e.date?.startsWith(thisMonth),
     ),

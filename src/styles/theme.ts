@@ -6,20 +6,18 @@ export const APP_NAME = 'Abuelo CRM';
 
 /* ── Pipeline Stages ── */
 export const DEFAULT_STAGES = [
-  'Backlog',
+  'Identificado',
   'Cotizado',
-  'Confirmado',
   'Cerrado Ganado',
-  'Completado',
-  'Cancelado',
+  'Cerrado Perdido',
 ];
-export const COMPLETED_STAGE = 'Completado';
 export const WON_STAGE = 'Cerrado Ganado';
-export const CANCELLED_STAGE = 'Cancelado';
-export const CONFIRMED_STAGE = 'Confirmado';
+export const LOST_STAGE = 'Cerrado Perdido';
 export const QUOTED_STAGE = 'Cotizado';
-// Legacy aliases
-export const LOST_STAGE = CANCELLED_STAGE;
+// Legacy aliases (keep for backward compat with existing opp data)
+export const CANCELLED_STAGE = LOST_STAGE;
+export const CONFIRMED_STAGE = 'Confirmado';
+export const COMPLETED_STAGE = 'Completado';
 
 /* ── Business Units ── */
 export const BUSINESS_UNITS: BusinessUnit[] = [
@@ -187,10 +185,13 @@ export const hasValidAmount = (opp: Partial<Opportunity>) => {
 
 export const getStageColor = (stage: string): string => {
   const MAP: Record<string, string> = {
-    Backlog: '#a8a295',
+    Identificado: '#a8a295',
     Cotizado: '#7a8aa3',
-    Confirmado: '#c15f3c',
     'Cerrado Ganado': '#5e7a45',
+    'Cerrado Perdido': '#b34a3a',
+    // legacy
+    Backlog: '#a8a295',
+    Confirmado: '#c15f3c',
     Completado: '#5e7a45',
     Cancelado: '#b34a3a',
   };

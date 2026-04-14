@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useConfig } from '@/modules/crm/context';
 import {
   C, h2Style, fmt, getStageColor, getOppStatus, DEFAULT_STAGES,
-  CANCELLED_STAGE, PRIORITY_COLOR, selectSmall, btnSmall, tdStyle, OPP_STATUSES,
+  LOST_STAGE, PRIORITY_COLOR, selectSmall, btnSmall, tdStyle, OPP_STATUSES,
 } from '@/styles/theme';
 import { InlineFilters } from './InlineFilters';
 import type { Opportunity } from '@/types';
@@ -126,7 +126,7 @@ export function ListView({ opps, onEdit, onDelete, moveStage, setModal, filters,
                     <td style={tdStyle}>
                       <select value={o.stage} onChange={(e) => {
                         const ns = e.target.value;
-                        if (ns === CANCELLED_STAGE) setModal({ type: 'cancel', opp: o });
+                        if (ns === LOST_STAGE) setModal({ type: 'cancel', opp: o });
                         else moveStage(o.id, ns);
                       }} style={{ ...selectSmall, color: stageColor }}>
                         {stages.map((s) => <option key={s} value={s}>{s}</option>)}
