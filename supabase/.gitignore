@@ -1,0 +1,5 @@
+# Supabase local dev artifacts — nunca commit
+.branches
+.temp
+.env
+seed.sql

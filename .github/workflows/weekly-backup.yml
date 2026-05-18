@@ -1,0 +1,30 @@
+name: Weekly Backup
+
+on:
+  schedule:
+    # Lunes 03:00 UTC = 21:00 domingo CDMX
+    - cron: '0 3 * * 1'
+  workflow_dispatch: # permite correr a mano
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pg_dump + aws-cli + gpg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client awscli gnupg
+          pg_dump --version
+
+      - name: Run backup
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: bash scripts/weekly-backup.sh
