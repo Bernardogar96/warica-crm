@@ -45,11 +45,16 @@ enable_signup = false
 double_confirm_changes = true
 enable_confirmations = true
 
-[functions]
+# Por default todas las functions requieren JWT (verify_jwt=true).
+# health debe responder sin token para uptime monitors.
+[functions.health]
+verify_jwt = false
+
+[functions.approve-quote]
 verify_jwt = true
 
-[functions.health]
-verify_jwt = false  # health debe responder sin token (uptime monitor)
+[functions.gcal-create-event]
+verify_jwt = true
 
 [storage]
 enabled = true

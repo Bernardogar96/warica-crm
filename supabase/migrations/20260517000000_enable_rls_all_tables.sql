@@ -4,6 +4,13 @@
 -- Esta migración es idempotente (DROP POLICY IF EXISTS + CREATE POLICY).
 -- =====================================================================
 
+-- ----- Ampliar el CHECK de profiles.role para soportar más roles -----
+-- Originalmente solo permite ('admin','user'); agregamos roles de negocio
+-- para nómina (rh), ventas, compras, contabilidad.
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
+  CHECK (role IN ('admin', 'user', 'rh', 'ventas', 'compras', 'contabilidad'));
+
 -- ----- Helper: función para checar rol del caller sin loops infinitos -----
 -- (security definer + lockdown del search_path para evitar el typical bug)
 CREATE OR REPLACE FUNCTION public.current_user_role()

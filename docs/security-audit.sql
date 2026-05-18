@@ -26,11 +26,23 @@ WHERE  schemaname = 'public'
 ORDER  BY tablename, policyname;
 
 -- 4) Detectar policies permisivas peligrosas: USING (true) sin discriminar rol
+--    Excluimos las intencionalmente abiertas para colaboración:
+--    clients_update, opportunities_update, projects_update permiten a
+--    cualquier autenticado editar (modelo actual del equipo).
 SELECT tablename, policyname, qual
 FROM   pg_policies
 WHERE  schemaname = 'public'
   AND  qual = 'true'
-  AND  cmd IN ('UPDATE','DELETE','INSERT');
+  AND  cmd IN ('UPDATE','DELETE','INSERT')
+  AND  (tablename, policyname) NOT IN (
+    ('clients', 'clients_update'),
+    ('opportunities', 'opportunities_update'),
+    ('projects', 'projects_update'),
+    ('clients', 'clients_insert'),
+    ('opportunities', 'opportunities_insert'),
+    ('projects', 'projects_insert'),
+    ('purchase_requests', 'purchase_requests_insert')
+  );
 
 -- 5) ¿Hay funciones SECURITY DEFINER sin search_path fijo? (vector típico de escalation)
 SELECT n.nspname, p.proname, p.prosecdef, p.proconfig

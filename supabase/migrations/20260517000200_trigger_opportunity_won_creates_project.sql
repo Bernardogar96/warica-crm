@@ -24,7 +24,12 @@ BEGIN
   -- Necesitamos un cliente vinculado
   client_uuid := NEW.client_id;
   IF client_uuid IS NULL AND NEW.data ? 'clientId' THEN
-    client_uuid := (NEW.data->>'clientId')::uuid;
+    -- Cast defensivo: si data->>'clientId' es string vacío o no-uuid, dejamos NULL.
+    BEGIN
+      client_uuid := NULLIF(NEW.data->>'clientId', '')::uuid;
+    EXCEPTION WHEN invalid_text_representation THEN
+      client_uuid := NULL;
+    END;
   END IF;
   IF client_uuid IS NULL THEN
     RAISE NOTICE 'opportunity % marcada como ganada sin cliente — no se crea project', NEW.id;

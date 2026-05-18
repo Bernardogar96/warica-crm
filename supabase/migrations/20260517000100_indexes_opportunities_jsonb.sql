@@ -21,8 +21,11 @@ CREATE INDEX IF NOT EXISTS idx_opp_data_gin
   ON public.opportunities USING gin (data jsonb_path_ops);
 
 -- Created_at suele ordenarse desc en listados.
+-- Usamos comparación de TEXTO (no cast a timestamptz, que no es IMMUTABLE
+-- y Postgres rechaza en index expressions). Funciona porque createdAt se
+-- guarda como ISO 8601 (orden lexicográfico == orden cronológico).
 CREATE INDEX IF NOT EXISTS idx_opp_created_at
-  ON public.opportunities (((data->>'createdAt')::timestamptz) DESC);
+  ON public.opportunities ((data->>'createdAt') DESC);
 
 -- Projects: filtros frecuentes
 CREATE INDEX IF NOT EXISTS idx_projects_opp     ON public.projects (opportunity_id);
