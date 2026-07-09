@@ -5,7 +5,7 @@ import { Field } from '@/components/Field';
 import { ActivitiesPanel } from './ActivitiesPanel';
 import { LinkClientModal } from './LinkClientModal';
 import { ClientModal } from './ClientModal';
-import { useClient, useCreateClient } from '@/modules/crm/hooks/useClients';
+import { useClient, useCreateClient, useUpdateClient } from '@/modules/crm/hooks/useClients';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   C, inputStyle, btnPrimary, btnSecondary, btnSmall,
@@ -37,8 +37,10 @@ export function OppModal({ opp, businessUnit, onSave, onClose, onDelete, default
 
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
+  const [showClientProfile, setShowClientProfile] = useState(false);
   const { data: linkedClient } = useClient(form.clientId);
   const createClient = useCreateClient();
+  const updateClient = useUpdateClient();
 
   const getHistoryDate = (stage: string) => {
     if (stage === stages[0]) return form.createdAt || '';
@@ -113,10 +115,13 @@ export function OppModal({ opp, businessUnit, onSave, onClose, onDelete, default
         {linkedClient ? (
           <div style={{ background: C.successDim, border: `1px solid ${C.success}40`, borderRadius: 8, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 16 }}>🏢</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{linkedClient.tradeName}</div>
+            <button onClick={() => setShowClientProfile(true)} style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }} title="Ver perfil del cliente">
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text, textDecoration: 'underline', textDecorationColor: `${C.success}80`, textUnderlineOffset: 2 }}>{linkedClient.tradeName}</div>
               <div style={{ fontSize: 11, color: C.textDim }}>{linkedClient.rfc || 'Sin RFC'}</div>
-            </div>
+            </button>
+            <button onClick={() => setShowClientProfile(true)} style={{ ...btnSmall, color: C.success, fontSize: 11, fontWeight: 600 }}>
+              Ver perfil
+            </button>
             <button onClick={() => set('clientId', undefined as unknown as string)} style={{ ...btnSmall, color: C.textDim, fontSize: 11 }}>
               Desvincular
             </button>
@@ -297,6 +302,15 @@ export function OppModal({ opp, businessUnit, onSave, onClose, onDelete, default
           setShowCreateClient(false);
         }}
         onClose={() => setShowCreateClient(false)}
+      />
+    )}
+    {showClientProfile && linkedClient && (
+      <ClientModal
+        client={linkedClient}
+        onSave={async (data) => {
+          await updateClient.mutateAsync({ ...data, id: linkedClient.id });
+        }}
+        onClose={() => setShowClientProfile(false)}
       />
     )}
   </>
