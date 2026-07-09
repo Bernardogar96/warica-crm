@@ -21,12 +21,20 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === 'production' ? 'hidden' : true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Separar libs pesadas para que la primera carga (login) no las pague
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'recharts': ['recharts'],
-          'supabase': ['@supabase/supabase-js'],
-          'react-query': ['@tanstack/react-query'],
+        // rolldown (Vite 8) exige que manualChunks sea función, no objeto.
+        // Separar libs pesadas para que la primera carga (login) no las pague.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (
+            id.includes('/react-router-dom/') ||
+            id.includes('/react-router/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react/') ||
+            id.includes('/scheduler/')
+          ) return 'react-vendor';
+          if (id.includes('/recharts/')) return 'recharts';
+          if (id.includes('/@supabase/supabase-js/')) return 'supabase';
+          if (id.includes('/@tanstack/react-query/')) return 'react-query';
         },
       },
     },
